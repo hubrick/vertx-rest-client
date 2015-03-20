@@ -34,6 +34,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
+        <arguments></arguments>
 
         <!-- Set pullInDeps to true if you want any modules specified in the 'includes' and 'deploys' fields
         in your mod.json to be automatically pulled in during packaging and added inside your module. Doing this means your
@@ -386,9 +387,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <configuration>
-                            <passphrase>${gpg.passphrase}</passphrase>
-                        </configuration>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
