@@ -4,6 +4,10 @@ The implementation is inspired by Spring's RestTemplate.
 The handling of MimeTypes and HttpMessageConverters is taken directly from Spring.
 It's basically a wrapper around the Vert.x HttpClient which makes it much easier to talk to REST endpoints.
 
+## Compatibility
+- Java 8+
+- Vert.x 2.x.x
+
 ## Dependency
 
 ### Maven
