@@ -1,0 +1,12 @@
+{
+  "description":"Vert.x REST client",
+  "licenses": ["The Apache Software License Version 2.0"],
+  "author": "Emir Dizdarevic",
+
+  // Optional fields
+  "developers": ["Emir Dizdarevic"],
+  "keywords": ["rest", "http"],
+  "homepage": "https://github.com/hubrick/vertx-rest-client",
+
+  "auto-redeploy": true
+}

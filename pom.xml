@@ -1,0 +1,473 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>7</version>
+    </parent>
+    <groupId>com.hubrick.vertx</groupId>
+    <artifactId>vertx-rest-client</artifactId>
+    <packaging>jar</packaging>
+    <version>1.0.0-SNAPSHOT</version>
+    <inceptionYear>2015</inceptionYear>
+
+    <name>Vert.x REST client</name>
+    <url>https://github.com/hubrick/vertx-rest-client</url>
+    <description>Vert.x REST client</description>
+    <licenses>
+        <license>
+            <name>Apache License Version 2.0</name>
+            <url> http://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <id>1</id>
+            <name>Emir Dizdarevic</name>
+        </developer>
+    </developers>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>1.8</java.version>
+
+        <!-- Set pullInDeps to true if you want any modules specified in the 'includes' and 'deploys' fields
+        in your mod.json to be automatically pulled in during packaging and added inside your module. Doing this means your
+        module won't download and install those dependencies at run-time when they're first requested. -->
+        <vertx.pullInDeps>false</vertx.pullInDeps>
+
+        <!-- Set createFatJar to true if you want to create a fat executable jar which contains the Vert.x binaries
+        along with the module so it can be run with java -jar <jarname> -->
+        <vertx.createFatJar>false</vertx.createFatJar>
+
+        <!--Vertx module name-->
+        <module.name>${project.groupId}~${project.artifactId}~${project.version}</module.name>
+
+        <!-- The directory where the module will be assembled - you can override this on the command line
+        with -Dmods.directory=mydir -->
+        <mods.directory>target/mods</mods.directory>
+
+        <!--Dependency versions-->
+        <vertx.version>2.1.5</vertx.version>
+        <vertx.testtools.version>2.0.3-final</vertx.testtools.version>
+        <junit.version>4.11</junit.version>
+        <jackson.version>2.4.4</jackson.version>
+        <javax-ws-rs-api.version>2.0</javax-ws-rs-api.version>
+        <guava.version>18.0</guava.version>
+        <findbugs.version>3.0.0</findbugs.version>
+
+        <!--Plugin versions-->
+        <maven.compiler.plugin.version>3.0</maven.compiler.plugin.version>
+        <maven.resources.plugin.version>2.6</maven.resources.plugin.version>
+        <maven.clean.plugin.version>2.5</maven.clean.plugin.version>
+        <maven.vertx.plugin.version>2.0.11-final</maven.vertx.plugin.version>
+        <maven.surefire.plugin.version>2.14</maven.surefire.plugin.version>
+        <maven.failsafe.plugin.version>2.14</maven.failsafe.plugin.version>
+        <maven.surefire.report.plugin.version>2.14</maven.surefire.report.plugin.version>
+        <maven.dependency.plugin.version>2.7</maven.dependency.plugin.version>
+        <maven.source.plugin.version>2.1.2</maven.source.plugin.version>
+        <maven.javadoc.plugin.version>2.9</maven.javadoc.plugin.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>${findbugs.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>javax.ws.rs</groupId>
+            <artifactId>javax.ws.rs-api</artifactId>
+            <version>${javax-ws-rs-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--Vertx provided dependencies-->
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-core</artifactId>
+            <version>${vertx.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-platform</artifactId>
+            <version>${vertx.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-hazelcast</artifactId>
+            <version>${vertx.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--Test dependencies-->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>1.10.17</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>testtools</artifactId>
+            <version>${vertx.testtools.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!-- The vert.x Maven plugin -->
+            <plugin>
+                <groupId>io.vertx</groupId>
+                <artifactId>vertx-maven-plugin</artifactId>
+                <version>${maven.vertx.plugin.version}</version>
+                <!--
+                You can specify extra config to the plugin as required here
+                <configuration>
+                   <configFile>/path/to/MyVerticle.conf</configFile>
+                   <instances>1</instances>
+                   <classpath>src/main/resources/:src/test/resources/:target/classes/:target/test-classes/</classpath>
+                </configuration>
+                -->
+                <!-- Make sure that the plugin uses the vert.x versions from this pom.xml not from its own pom.xml -->
+                <dependencies>
+                    <dependency>
+                        <groupId>io.vertx</groupId>
+                        <artifactId>vertx-platform</artifactId>
+                        <version>${vertx.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>io.vertx</groupId>
+                        <artifactId>vertx-core</artifactId>
+                        <version>${vertx.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>io.vertx</groupId>
+                        <artifactId>vertx-hazelcast</artifactId>
+                        <version>${vertx.version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>PullInDeps</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>pullInDeps</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Other plugins required by the build -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven.source.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven.javadoc.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>${maven.resources.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>copy-mod-to-target</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <overwrite>true</overwrite>
+                            <outputDirectory>${mods.directory}/${module.name}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>target/classes</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>${maven.dependency.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>copy-mod-dependencies-to-target</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${mods.directory}/${module.name}/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-mod-dependencies-to-target-dependencies</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>target/dependencies</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                        <exclude>**/*FunctionalTest.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven.failsafe.plugin.version}</version>
+                <configuration>
+                    <systemProperties>
+                        <property>
+                            <name>vertx.mods</name>
+                            <value>${mods.directory}</value>
+                        </property>
+                        <property>
+                            <name>vertx.modulename</name>
+                            <value>${module.name}</value>
+                        </property>
+                    </systemProperties>
+                    <includes>
+                        <include>**/*IntegrationTest.java</include>
+                        <include>**/*FunctionalTest.java</include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/main/assembly/mod.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>assemble</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>2.5</version>
+                <configuration>
+                    <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
+                    <properties>
+                        <owner>Etaia AS</owner>
+
+                        <email>oss@hubrick.com</email>
+                    </properties>
+                    <includes>
+                        <include>**/*.java</include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <configuration>
+                    <mavenExecutorId>forked-path</mavenExecutorId>
+                    <useReleaseProfile>false</useReleaseProfile>
+                    <arguments>${arguments} -Psonatype-oss-release -Psign</arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>sign</id>
+            <activation>
+                <property>
+                    <name>performRelease</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <configuration>
+                            <passphrase>${gpg.passphrase}</passphrase>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+    <repositories>
+        <repository>
+            <id>sonatype-nexus-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </repository>
+        <repository>
+            <id>hubrick-oss-snapshot</id>
+            <url>https://oss.sonatype.org/content/groups/public</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>hubrick-oss-release</id>
+            <url>https://oss.sonatype.org/content/groups/staging</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>hubrick-plugin-snapshot</id>
+            <url>https://oss.sonatype.org/content/groups/public</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+        <pluginRepository>
+            <id>hubrick-plugin-release</id>
+            <url>https://oss.sonatype.org/content/groups/staging</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <distributionManagement>
+        <repository>
+            <id>sonatype-nexus-staging</id>
+            <name>Sonatype Nexus release repository</name>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+        <snapshotRepository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus snapshot repository</name>
+            <url> https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <scm>
+        <connection>scm:git:git://github.com/hubrick/vertx-rest-client.git</connection>
+        <developerConnection>scm:git:git@github.com:hubrick/vertx-rest-client.git</developerConnection>
+        <url>http://github.com/hubrick/vertx-rest-client.git</url>
+    </scm>
+</project>
