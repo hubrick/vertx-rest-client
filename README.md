@@ -10,7 +10,7 @@ It's basically a wrapper around the Vert.x HttpClient which makes it much easier
 
 ## Dependency
 
-### Maven
+### Maven (still not available due to problems to publish it to central repo)
 ```xml
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
