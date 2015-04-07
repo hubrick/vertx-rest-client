@@ -98,7 +98,7 @@ public class ExampleVerticle extends Verticle {
         getRestClientRequest.exceptionHandler(exception -> {
             // TODO: Handle exception
         });
-        getRestClientRequest.exceptionHandler(exception -> {
+        restClient.exceptionHandler(exception -> {
             // TODO: Handle exception
         });
         getRestClientRequest.end();
