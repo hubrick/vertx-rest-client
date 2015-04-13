@@ -94,6 +94,11 @@
             <artifactId>jsr305</artifactId>
             <version>${findbugs.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.netflix.rxjava</groupId>
+            <artifactId>rxjava-core</artifactId>
+            <version>0.20.7</version>
+        </dependency>
 
         <!--Vertx provided dependencies-->
         <dependency>
@@ -138,6 +143,12 @@
             <groupId>io.vertx</groupId>
             <artifactId>testtools</artifactId>
             <version>${vertx.testtools.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mock-server</groupId>
+            <artifactId>mockserver-netty</artifactId>
+            <version>3.9.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -339,7 +350,6 @@
                     <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
                     <properties>
                         <owner>Etaia AS</owner>
-
                         <email>oss@hubrick.com</email>
                     </properties>
                     <includes>
