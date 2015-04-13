@@ -94,12 +94,6 @@
             <artifactId>jsr305</artifactId>
             <version>${findbugs.version}</version>
         </dependency>
-        <dependency>
-            <groupId>javax.ws.rs</groupId>
-            <artifactId>javax.ws.rs-api</artifactId>
-            <version>${javax-ws-rs-api.version}</version>
-            <scope>provided</scope>
-        </dependency>
 
         <!--Vertx provided dependencies-->
         <dependency>
