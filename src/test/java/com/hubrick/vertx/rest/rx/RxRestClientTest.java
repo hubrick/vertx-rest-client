@@ -24,7 +24,7 @@ import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
 import com.hubrick.vertx.rest.impl.DefaultRestClient;
-import com.hubrick.vertx.rest.rx.impl.DefaulRxRestClient;
+import com.hubrick.vertx.rest.rx.impl.DefaultRxRestClient;
 import org.junit.Test;
 import org.mockserver.model.Header;
 import org.vertx.testtools.VertxAssert;
@@ -97,12 +97,12 @@ public class RxRestClientTest extends AbstractFunctionalTest {
                 .setPort(8089)
                 .setMaxPoolSize(10);
 
-        final RxRestClient rxRestClient = new DefaulRxRestClient(restClient);
+        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
         final Observable<RestClientResponse<UserSearchResponse[]>> response =  rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, restClientRequest -> restClientRequest.end());
         response.flatMap(userSearchResponseRestClientResponse -> {
             final List<Observable<RestClientResponse<UserResponse>>> responses = new LinkedList<>();
             for (UserSearchResponse userSearchResponse : userSearchResponseRestClientResponse.getBody()) {
-                final Observable<RestClientResponse<UserResponse>> userResponse =  rxRestClient.get("/api/v1/users/" + userSearchResponse.getId(), UserResponse.class, restClientRequest -> restClientRequest.end());
+                final Observable<RestClientResponse<UserResponse>> userResponse = rxRestClient.get("/api/v1/users/" + userSearchResponse.getId(), UserResponse.class, restClientRequest -> restClientRequest.end());
                 responses.add(userResponse);
             }
 
