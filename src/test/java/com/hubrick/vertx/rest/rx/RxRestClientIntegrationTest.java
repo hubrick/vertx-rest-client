@@ -45,7 +45,7 @@ import static org.mockserver.model.HttpResponse.response;
  * @author Emir Dizdarevic
  * @since 1.1.0
  */
-public class RxRestClientTest extends AbstractFunctionalTest {
+public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
     public void testSimpleGETRequest() throws Exception {
@@ -57,7 +57,7 @@ public class RxRestClientTest extends AbstractFunctionalTest {
                 response()
                         .withStatusCode(200)
                         .withHeader(Header.header("Content-Type", "application/json;charset=UTF-8"))
-                        .withBody(toByteArray(getResource(RxRestClientTest.class, "userSearchResponse.json")))
+                        .withBody(toByteArray(getResource(RxRestClientIntegrationTest.class, "userSearchResponse.json")))
         );
 
         getMockServerClient().when(
@@ -68,7 +68,7 @@ public class RxRestClientTest extends AbstractFunctionalTest {
                 response()
                         .withStatusCode(200)
                         .withHeader(Header.header("Content-Type", "application/json;charset=UTF-8"))
-                        .withBody(toByteArray(getResource(RxRestClientTest.class, "userResponse1.json")))
+                        .withBody(toByteArray(getResource(RxRestClientIntegrationTest.class, "userResponse1.json")))
         );
 
         getMockServerClient().when(
@@ -79,7 +79,7 @@ public class RxRestClientTest extends AbstractFunctionalTest {
                 response()
                         .withStatusCode(200)
                         .withHeader(Header.header("Content-Type", "application/json;charset=UTF-8"))
-                        .withBody(toByteArray(getResource(RxRestClientTest.class, "userResponse2.json")))
+                        .withBody(toByteArray(getResource(RxRestClientIntegrationTest.class, "userResponse2.json")))
         );
 
 
