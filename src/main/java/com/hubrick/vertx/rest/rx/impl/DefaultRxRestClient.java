@@ -82,10 +82,11 @@ public class DefaultRxRestClient implements RxRestClient {
 
     @Override
     public <T> Observable<RestClientResponse<T>> request(HttpMethod method, String uri, Class<T> responseClass, Action1<RestClientRequest> requestBuilder) {
-        final MemoizeHandler<RestClientResponse<T>, RestClientResponse<T>> handler = new MemoizeHandler<>();
+        final DefaultRxRestClientResponseMemoizeHandler<T> handler = new DefaultRxRestClientResponseMemoizeHandler<>();
 
-        final RestClientRequest<T> request = restClient.request(method, uri, responseClass, handler);
-        request.exceptionHandler(event -> handler.fail(event));
+        final RestClientRequest<T> originalRequest = restClient.request(method, uri, responseClass, handler);
+        originalRequest.exceptionHandler(event -> handler.fail(event));
+        final RestClientRequest<T> request = new DefaultRxRestClientRequest<>(originalRequest);
 
         // Use the builder to create the full request (or start upload)
         // We assume builder will call request.end()
