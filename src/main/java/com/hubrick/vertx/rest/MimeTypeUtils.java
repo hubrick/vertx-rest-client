@@ -18,7 +18,7 @@ package com.hubrick.vertx.rest;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
-import com.hubrick.vertx.rest.excpetion.InvalidMimeTypeException;
+import com.hubrick.vertx.rest.exception.InvalidMimeTypeException;
 
 import java.nio.charset.UnsupportedCharsetException;
 import java.util.*;

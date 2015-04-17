@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hubrick.vertx.rest.excpetion;
+package com.hubrick.vertx.rest.exception;
 
 /**
  * @author Emir Dizdarevic

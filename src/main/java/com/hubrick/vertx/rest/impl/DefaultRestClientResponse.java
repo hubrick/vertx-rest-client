@@ -18,7 +18,7 @@ package com.hubrick.vertx.rest.impl;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
-import com.hubrick.vertx.rest.excpetion.RestClientException;
+import com.hubrick.vertx.rest.exception.RestClientException;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;
 import org.vertx.java.core.http.HttpClientResponse;

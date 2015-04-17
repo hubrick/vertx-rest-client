@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hubrick.vertx.rest.excpetion;
+package com.hubrick.vertx.rest.exception;
 
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import org.vertx.java.core.http.HttpClientResponse;
@@ -21,16 +21,16 @@ import org.vertx.java.core.http.HttpClientResponse;
 import java.util.List;
 
 /**
- * Exception thrown when an HTTP 4xx is received.
+ * Exception thrown when an HTTP 5xx is received.
  *
  * @author Emir Dizdarevic
  * @since 1.0.0
  */
-public class HttpClientErrorException extends HttpStatusCodeException {
+public class HttpServerErrorException extends HttpStatusCodeException {
 
-    private static final long serialVersionUID = 5177019431887513952L;
+    private static final long serialVersionUID = -2915754006618138282L;
 
-    public HttpClientErrorException(HttpClientResponse httpClientResponse, List<HttpMessageConverter> httpMessageConverters, byte[] responseBody) {
+    public HttpServerErrorException(HttpClientResponse httpClientResponse, List<HttpMessageConverter> httpMessageConverters, byte[] responseBody) {
         super(httpClientResponse, httpMessageConverters, responseBody);
     }
 }

@@ -22,7 +22,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.excpetion.HttpMessageConverterException;
+import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.http.HttpClientRequest;
 import org.vertx.java.core.http.HttpClientResponse;

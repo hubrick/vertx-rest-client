@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
 import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.excpetion.HttpMessageConverterException;
+import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vertx.java.core.MultiMap;

@@ -16,7 +16,7 @@
 package com.hubrick.vertx.rest.converter;
 
 import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.excpetion.HttpMessageConverterException;
+import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vertx.java.core.MultiMap;
@@ -177,7 +177,7 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
      *
      * @param clazz        the type of object to return
      * @return the converted object
-     * @throws com.hubrick.vertx.rest.excpetion.HttpMessageConverterException in case of conversion errors
+     * @throws com.hubrick.vertx.rest.exception.HttpMessageConverterException in case of conversion errors
      */
     protected abstract T readInternal(Class<? extends T> clazz, byte[] buffer, MultiMap responseHeaders) throws HttpMessageConverterException;
 

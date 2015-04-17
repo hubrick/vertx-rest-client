@@ -18,8 +18,8 @@ package com.hubrick.vertx.rest;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
-import com.hubrick.vertx.rest.excpetion.InvalidMediaTypeException;
-import com.hubrick.vertx.rest.excpetion.InvalidMimeTypeException;
+import com.hubrick.vertx.rest.exception.InvalidMediaTypeException;
+import com.hubrick.vertx.rest.exception.InvalidMimeTypeException;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;

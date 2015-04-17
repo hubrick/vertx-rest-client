@@ -18,7 +18,7 @@ package com.hubrick.vertx.rest.converter;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.excpetion.HttpMessageConverterException;
+import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.vertx.java.core.MultiMap;
 import org.vertx.java.core.http.HttpHeaders;
 
