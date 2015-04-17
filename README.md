@@ -1,8 +1,10 @@
 # Vert.x Rest client
 
-The implementation is inspired by Spring's RestTemplate. 
+A fully functional Vert.x REST client with RxJava support.
+
+The basic idea is inspired by Spring's RestTemplate. 
 The handling of MimeTypes and HttpMessageConverters is taken directly from Spring.
-It's basically a wrapper around the Vert.x HttpClient which makes it much easier to talk to REST endpoints.
+
 
 ## Compatibility
 - Java 8+
@@ -15,7 +17,7 @@ It's basically a wrapper around the Vert.x HttpClient which makes it much easier
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -23,7 +25,7 @@ It's basically a wrapper around the Vert.x HttpClient which makes it much easier
 ### Vert.x mod.json
 ```json
 {
-    "includes": "com.hubrick.vertx~vertx-rest-client~1.0.0",
+    "includes": "com.hubrick.vertx~vertx-rest-client~1.1.0",
 }
 ```
 
@@ -70,6 +72,39 @@ public class ExampleVerticle extends Verticle {
         });
         postRestClientRequest.setContentType(MediaType.TEXT_PLAIN);
         postRestClientRequest.end("Some data");
+    }
+}
+```
+
+### RxJava example
+```java
+public class ExampleVerticle extends Verticle {
+
+    @Override
+    public void start() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+            new FormHttpMessageConverter(), 
+            new StringHttpMessageConverter(), 
+            new JacksonJsonHttpMessageConverter(objectMapper)
+        );
+    
+        final RestClient restClient = new DefaultRestClient(vertx, httpMessageConverters)
+                                                          .setConnectTimeout(500)
+                                                          .setGlobalRequestTimeout(300)
+                                                          .setHost("example.com")
+                                                          .setPort(80)
+                                                          .setMaxPoolSize(500);
+                                                          
+        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
+                                     
+        // GET example
+        final Observable<RestClientResponse> getRestClientResponse = rxRestClient.get("/api/users/123", SomeReturnObject.class, restClientRequest -> restClientRequest.end());
+        getRestClientResponse.doOnError(t -> { 
+            // Handle exception
+        }).subscribe(getRestClientResponse -> { 
+            // Handle response
+        });
     }
 }
 ```
