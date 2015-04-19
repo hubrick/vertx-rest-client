@@ -2,7 +2,7 @@
 
 A fully functional Vert.x REST client with RxJava support.
 
-The basic idea is inspired by Spring's RestTemplate. 
+The design is inspired by Spring's RestTemplate. 
 The handling of MimeTypes and HttpMessageConverters is taken directly from Spring.
 
 
