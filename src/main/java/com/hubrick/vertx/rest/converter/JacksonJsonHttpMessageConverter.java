@@ -26,8 +26,13 @@ import org.slf4j.LoggerFactory;
 import org.vertx.java.core.MultiMap;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * @author Emir Dizdarevic
@@ -38,16 +43,46 @@ public class JacksonJsonHttpMessageConverter<T extends Object> extends AbstractH
     private static final Logger log = LoggerFactory.getLogger(JacksonJsonHttpMessageConverter.class);
     private final ObjectMapper objectMapper;
 
+    // Check for Jackson 2.3's overloaded canDeserialize/canSerialize variants with cause reference
+    private static final boolean jackson23Available = getMethodIfAvailable(ObjectMapper.class, "canDeserialize", JavaType.class, AtomicReference.class) != null;
+
     public JacksonJsonHttpMessageConverter(ObjectMapper objectMapper) {
         super(new MediaType("application", "json", Charsets.UTF_8), new MediaType("application", "*+json", Charsets.UTF_8));
         this.objectMapper = objectMapper;
     }
 
+    private static Method getMethodIfAvailable(Class<?> clazz, String methodName, Class<?>... paramTypes) {
+        checkNotNull(clazz, "Class must not be null");
+        checkNotNull(methodName, "Method name must not be null");
+        if (paramTypes != null) {
+            try {
+                return clazz.getMethod(methodName, paramTypes);
+            } catch (NoSuchMethodException ex) {
+                return null;
+            }
+        } else {
+            Set<Method> candidates = new HashSet<>(1);
+            Method[] methods = clazz.getMethods();
+            for (Method method : methods) {
+                if (methodName.equals(method.getName())) {
+                    candidates.add(method);
+                }
+            }
+            if (candidates.size() == 1) {
+                return candidates.iterator().next();
+            }
+            return null;
+        }
+    }
+
     @Override
     public boolean canRead(Class<?> clazz, MediaType mediaType) {
         JavaType javaType = getJavaType(clazz, null);
+        if (!jackson23Available) {
+            return (this.objectMapper.canDeserialize(javaType) && canRead(mediaType));
+        }
         AtomicReference<Throwable> causeRef = new AtomicReference<>();
-        if (this.objectMapper.canDeserialize(javaType) && canRead(mediaType)) {
+        if (this.objectMapper.canDeserialize(javaType, causeRef) && canRead(mediaType)) {
             return true;
         }
         Throwable cause = causeRef.get();
@@ -59,8 +94,11 @@ public class JacksonJsonHttpMessageConverter<T extends Object> extends AbstractH
 
     @Override
     public boolean canWrite(Class<?> clazz, MediaType mediaType) {
-        AtomicReference<Throwable> causeRef = new AtomicReference<>();
-        if (this.objectMapper.canSerialize(clazz) && canWrite(mediaType)) {
+        if (!jackson23Available) {
+            return (this.objectMapper.canSerialize(clazz) && canWrite(mediaType));
+        }
+        AtomicReference<Throwable> causeRef = new AtomicReference<Throwable>();
+        if (this.objectMapper.canSerialize(clazz, causeRef) && canWrite(mediaType)) {
             return true;
         }
         Throwable cause = causeRef.get();
