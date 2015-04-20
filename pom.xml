@@ -55,7 +55,7 @@
         <vertx.version>2.1.5</vertx.version>
         <vertx.testtools.version>2.0.3-final</vertx.testtools.version>
         <junit.version>4.11</junit.version>
-        <jackson.version>2.4.4</jackson.version>
+        <jackson.version>2.5.2</jackson.version>
         <javax-ws-rs-api.version>2.0</javax-ws-rs-api.version>
         <guava.version>18.0</guava.version>
         <findbugs.version>3.0.0</findbugs.version>
