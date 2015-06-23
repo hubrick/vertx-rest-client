@@ -112,39 +112,37 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 }
                 if (exceptionHandler != null) {
                     exceptionHandler.handle(exception);
-                    return;
                 } else {
                     throw exception;
                 }
             });
-        }
-
-        httpClientResponse.bodyHandler((buffer) -> {
-            if (log.isDebugEnabled()) {
-                final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                log.debug("Http request SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
-            }
-
-            try {
-                final RestClientResponse<T> restClientResponse = new DefaultRestClientResponse(
-                        httpMessageConverters,
-                        clazz,
-                        buffer.getBytes(),
-                        httpClientResponse,
-                        exceptionHandler
-                );
-
-                handler.handle(restClientResponse);
-            } catch (Throwable t) {
-                log.error("Failed invoking rest handler", t);
-                if (exceptionHandler != null) {
-                    exceptionHandler.handle(t);
-                    return;
-                } else {
-                    throw t;
+        } else {
+            httpClientResponse.bodyHandler((buffer) -> {
+                if (log.isDebugEnabled()) {
+                    final String body = new String(buffer.getBytes(), Charsets.UTF_8);
+                    log.debug("Http request SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
-            }
-        });
+
+                try {
+                    final RestClientResponse<T> restClientResponse = new DefaultRestClientResponse(
+                            httpMessageConverters,
+                            clazz,
+                            buffer.getBytes(),
+                            httpClientResponse,
+                            exceptionHandler
+                    );
+
+                    handler.handle(restClientResponse);
+                } catch (Throwable t) {
+                    log.error("Failed invoking rest handler", t);
+                    if (exceptionHandler != null) {
+                        exceptionHandler.handle(t);
+                    } else {
+                        throw t;
+                    }
+                }
+            });
+        }
     }
 
     @Override
