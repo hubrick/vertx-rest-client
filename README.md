@@ -17,7 +17,7 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
-    <version>1.1.1</version>
+    <version>1.2.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -25,7 +25,7 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 ### Vert.x mod.json
 ```json
 {
-    "includes": "com.hubrick.vertx~vertx-rest-client~1.1.1",
+    "includes": "com.hubrick.vertx~vertx-rest-client~1.2.0",
 }
 ```
 
