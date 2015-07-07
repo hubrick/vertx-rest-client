@@ -100,11 +100,14 @@ public class ExampleVerticle extends Verticle {
                                      
         // GET example
         final Observable<RestClientResponse> getRestClientResponse = rxRestClient.get("/api/users/123", SomeReturnObject.class, restClientRequest -> restClientRequest.end());
-        getRestClientResponse.doOnError(t -> { 
-            // Handle exception
-        }).subscribe(getRestClientResponse -> { 
-            // Handle response
-        });
+        getRestClientResponse.subscribe(
+            getRestClientResponse -> { 
+                // Handle response
+            },
+            error -> {
+                // Handle exception
+            }
+        );
     }
 }
 ```
