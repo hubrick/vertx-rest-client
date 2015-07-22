@@ -83,12 +83,12 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
             final byte[] buffer = writeInternal(object, httpClientRequest.headers());
             if(endRequest) {
                 if(log.isDebugEnabled()) {
-                    log.debug("Request payload: {}", new String(buffer, Charsets.UTF_8));
+                    log.debug("Request body: {}", new String(buffer, Charsets.UTF_8));
                 }
                 httpClientRequest.end(new Buffer(buffer));
             } else {
                 if(log.isDebugEnabled()) {
-                    log.debug("Partial request payload: {}", new String(buffer, Charsets.UTF_8));
+                    log.debug("Partial request body: {}", new String(buffer, Charsets.UTF_8));
                 }
                 httpClientRequest.write(new Buffer(buffer));
             }

@@ -155,10 +155,10 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
         httpClientRequest.headers().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bytes.length));
 
         if(endRequest) {
-            log.debug("Request payload: {}", payload);
+            log.debug("Request body: {}", payload);
             httpClientRequest.end(new Buffer(bytes));
         } else {
-            log.debug("Partial request payload: {}", payload);
+            log.debug("Partial request body: {}", payload);
             httpClientRequest.write(new Buffer(bytes));
         }
     }
