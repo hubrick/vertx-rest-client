@@ -23,6 +23,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.http.HttpClientRequest;
 import org.vertx.java.core.http.HttpClientResponse;
@@ -41,6 +43,8 @@ import java.util.List;
  * @since 1.0.0
  */
 public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<String, Object>> {
+
+    private static final Logger log = LoggerFactory.getLogger(FormHttpMessageConverter.class);
 
     private static final Charset charset = Charsets.UTF_8;
     private static final List<MediaType> supportedMediaTypes = ImmutableList.of(MediaType.APPLICATION_FORM_URLENCODED);
@@ -146,12 +150,15 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
                 builder.append('&');
             }
         }
-        byte[] bytes = builder.toString().getBytes(charset.name());
+        final String payload = builder.toString();
+        final byte[] bytes = payload.getBytes(charset.name());
         httpClientRequest.headers().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bytes.length));
 
         if(endRequest) {
+            log.debug("Request payload: {}", payload);
             httpClientRequest.end(new Buffer(bytes));
         } else {
+            log.debug("Partial request payload: {}", payload);
             httpClientRequest.write(new Buffer(bytes));
         }
     }

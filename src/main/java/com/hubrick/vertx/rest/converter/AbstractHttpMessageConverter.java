@@ -15,6 +15,7 @@
  */
 package com.hubrick.vertx.rest.converter;
 
+import com.google.common.base.Charsets;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.slf4j.Logger;
@@ -81,8 +82,14 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
 
             final byte[] buffer = writeInternal(object, httpClientRequest.headers());
             if(endRequest) {
+                if(log.isDebugEnabled()) {
+                    log.debug("Request payload: {}", new String(buffer, Charsets.UTF_8));
+                }
                 httpClientRequest.end(new Buffer(buffer));
             } else {
+                if(log.isDebugEnabled()) {
+                    log.debug("Partial request payload: {}", new String(buffer, Charsets.UTF_8));
+                }
                 httpClientRequest.write(new Buffer(buffer));
             }
         } catch (HttpMessageConverterException e) {
