@@ -17,6 +17,8 @@ package com.hubrick.vertx.rest.converter;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
+import com.hubrick.vertx.rest.HttpInputMessage;
+import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.vertx.java.core.MultiMap;
@@ -51,6 +53,8 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
     /**
      * Indicates whether the {@code Accept-Charset} should be written to any outgoing request.
      * <p>Default is {@code true}.
+     *
+     * @param writeAcceptCharset Defines is the Accept-Charset header should be written
      */
     public void setWriteAcceptCharset(boolean writeAcceptCharset) {
         this.writeAcceptCharset = writeAcceptCharset;
@@ -62,18 +66,26 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
     }
 
     @Override
-    protected String readInternal(Class<? extends String> clazz, byte[] buffer, MultiMap responseHeaders) throws HttpMessageConverterException {
-        final Charset charset = getContentTypeCharset(MediaType.parseMediaType(responseHeaders.get(HttpHeaders.CONTENT_TYPE)));
-        return new String(buffer, charset);
+    protected String readInternal(Class<? extends String> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
+        try {
+            final Charset charset = getContentTypeCharset(MediaType.parseMediaType(httpInputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE)));
+            return new String(httpInputMessage.getBody(), charset);
+        } catch (Exception e) {
+            throw new HttpMessageConverterException("Failed to read http body", e);
+        }
     }
 
     @Override
-    protected byte[] writeInternal(String object, MultiMap requestHeaders) throws HttpMessageConverterException {
-        if (this.writeAcceptCharset) {
-            requestHeaders.set(HttpHeaders.ACCEPT_CHARSET, Joiner.on(",").join(getAcceptedCharsets()));
+    protected void writeInternal(String object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
+        try {
+            if (this.writeAcceptCharset) {
+                httpOutputMessage.getHeaders().set(HttpHeaders.ACCEPT_CHARSET, Joiner.on(",").join(getAcceptedCharsets()));
+            }
+            final Charset charset = getContentTypeCharset(MediaType.parseMediaType(httpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE)));
+            httpOutputMessage.write(object.getBytes(charset));
+        } catch (Exception e) {
+            throw new HttpMessageConverterException("Failed to write http body", e);
         }
-        final Charset charset = getContentTypeCharset(MediaType.parseMediaType(requestHeaders.get(HttpHeaders.CONTENT_TYPE)));
-        return object.getBytes(charset);
     }
 
     /**
@@ -89,8 +101,7 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
     private Charset getContentTypeCharset(MediaType contentType) {
         if (contentType != null && contentType.getCharSet() != null) {
             return contentType.getCharSet();
-        }
-        else {
+        } else {
             return this.defaultCharset;
         }
     }

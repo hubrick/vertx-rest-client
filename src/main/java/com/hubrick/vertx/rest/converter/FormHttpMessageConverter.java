@@ -21,13 +21,12 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
+import com.hubrick.vertx.rest.HttpInputMessage;
+import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.http.HttpClientRequest;
-import org.vertx.java.core.http.HttpClientResponse;
 import org.vertx.java.core.http.HttpHeaders;
 
 import java.io.IOException;
@@ -50,10 +49,10 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
     private static final List<MediaType> supportedMediaTypes = ImmutableList.of(MediaType.APPLICATION_FORM_URLENCODED);
 
     @Override
-    public Multimap<String, Object> read(Class<? extends Multimap<String, Object>> clazz, byte[] buffer, HttpClientResponse httpClientResponse) throws HttpMessageConverterException {
-        final MediaType mediaType = MediaType.parseMediaType(httpClientResponse.headers().get(HttpHeaders.CONTENT_TYPE));
+    public Multimap<String, Object> read(Class<? extends Multimap<String, Object>> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
+        final MediaType mediaType = MediaType.parseMediaType(httpInputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE));
         Charset charset = (mediaType.getCharSet() != null ? mediaType.getCharSet() : this.charset);
-        String body = new String(buffer, charset);
+        String body = new String(httpInputMessage.getBody(), charset);
 
         try {
             String[] pairs = FluentIterable.from(Splitter.on("&").split(body)).toArray(String.class);
@@ -76,9 +75,9 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
     }
 
     @Override
-    public void write(Multimap<String, Object> object, MediaType contentType, HttpClientRequest httpClientRequest, boolean endRequest) throws HttpMessageConverterException {
+    public void write(Multimap<String, Object> object, MediaType contentType, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            writeForm(object, contentType, httpClientRequest, endRequest);
+            writeForm(object, contentType, httpOutputMessage);
         } catch (IOException e) {
             throw new HttpMessageConverterException(e);
         }
@@ -121,14 +120,14 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
         return false;
     }
 
-    private void writeForm(Multimap<String, Object> form, MediaType contentType, HttpClientRequest httpClientRequest, boolean endRequest) throws IOException {
+    private void writeForm(Multimap<String, Object> form, MediaType contentType, HttpOutputMessage httpOutputMessage) throws IOException {
 
         Charset charset;
         if (contentType != null) {
-            httpClientRequest.headers().set(HttpHeaders.CONTENT_TYPE, contentType.toString());
+            httpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_TYPE, contentType.toString());
             charset = contentType.getCharSet() != null ? contentType.getCharSet() : this.charset;
         } else {
-            httpClientRequest.headers().set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED.toString());
+            httpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED.toString());
             charset = this.charset;
         }
 
@@ -152,14 +151,7 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
         }
         final String payload = builder.toString();
         final byte[] bytes = payload.getBytes(charset.name());
-        httpClientRequest.headers().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bytes.length));
-
-        if(endRequest) {
-            log.debug("Request body: {}", payload);
-            httpClientRequest.end(new Buffer(bytes));
-        } else {
-            log.debug("Partial request body: {}", payload);
-            httpClientRequest.write(new Buffer(bytes));
-        }
+        httpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bytes.length));
+        httpOutputMessage.write(bytes);
     }
 }
