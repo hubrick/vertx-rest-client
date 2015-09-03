@@ -15,15 +15,13 @@
  */
 package com.hubrick.vertx.rest.converter;
 
-import com.google.common.base.Charsets;
+import com.hubrick.vertx.rest.HttpInputMessage;
+import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.http.HttpClientRequest;
-import org.vertx.java.core.http.HttpClientResponse;
 import org.vertx.java.core.http.HttpHeaders;
 
 import java.io.IOException;
@@ -62,14 +60,14 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
     }
 
     @Override
-    public T read(Class<? extends T> clazz, byte[] buffer, HttpClientResponse httpClientResponse) throws HttpMessageConverterException {
-        return readInternal(clazz, buffer, httpClientResponse.headers());
+    public T read(Class<? extends T> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
+        return readInternal(clazz, httpInputMessage);
     }
 
     @Override
-    public void write(T object, MediaType contentType, HttpClientRequest httpClientRequest, boolean endRequest) throws HttpMessageConverterException {
+    public void write(T object, MediaType contentType, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            final MultiMap headers = httpClientRequest.headers();
+            final MultiMap headers = httpOutputMessage.getHeaders();
             if (headers.get(HttpHeaders.CONTENT_TYPE) == null) {
                 MediaType contentTypeToUse = contentType;
                 if (contentType == null || contentType.isWildcardType() || contentType.isWildcardSubtype()) {
@@ -80,18 +78,7 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
                 }
             }
 
-            final byte[] buffer = writeInternal(object, httpClientRequest.headers());
-            if(endRequest) {
-                if(log.isDebugEnabled()) {
-                    log.debug("Request body: {}", new String(buffer, Charsets.UTF_8));
-                }
-                httpClientRequest.end(new Buffer(buffer));
-            } else {
-                if(log.isDebugEnabled()) {
-                    log.debug("Partial request body: {}", new String(buffer, Charsets.UTF_8));
-                }
-                httpClientRequest.write(new Buffer(buffer));
-            }
+            writeInternal(object, httpOutputMessage);
         } catch (HttpMessageConverterException e) {
             throw e;
         } catch (Throwable t) {
@@ -182,17 +169,17 @@ public abstract class AbstractHttpMessageConverter<T> implements HttpMessageConv
     /**
      * Abstract template method that reads the actual object. Invoked from {@link #read}.
      *
-     * @param clazz        the type of object to return
-     * @return the converted object
+     * @param clazz the type of object to return
+     * @return callback handler when the object has been converted
      * @throws com.hubrick.vertx.rest.exception.HttpMessageConverterException in case of conversion errors
      */
-    protected abstract T readInternal(Class<? extends T> clazz, byte[] buffer, MultiMap responseHeaders) throws HttpMessageConverterException;
+    protected abstract T readInternal(Class<? extends T> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException;
 
     /**
      * Abstract template method that writes the actual body. Invoked from {@link #write}.
      *
-     * @param object            the object to write to the output message
+     * @param object the object to write to the output message
      * @throws HttpMessageConverterException in case of conversion errors
      */
-    protected abstract byte[] writeInternal(T object, MultiMap requestHeaders) throws HttpMessageConverterException;
+    protected abstract void writeInternal(T object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException;
 }

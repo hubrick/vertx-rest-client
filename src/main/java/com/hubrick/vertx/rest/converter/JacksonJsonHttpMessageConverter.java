@@ -15,15 +15,15 @@
  */
 package com.hubrick.vertx.rest.converter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
+import com.hubrick.vertx.rest.HttpInputMessage;
+import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vertx.java.core.MultiMap;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -119,20 +119,21 @@ public class JacksonJsonHttpMessageConverter<T extends Object> extends AbstractH
     }
 
     @Override
-    protected T readInternal(Class<? extends T> clazz, byte[] buffer, MultiMap responseHeaders) throws HttpMessageConverterException {
+    protected T readInternal(Class<? extends T> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
         try {
-            return objectMapper.readValue(buffer, clazz);
+            return objectMapper.readValue(httpInputMessage.getBody(), clazz);
         } catch (IOException e) {
             throw new HttpMessageConverterException("Error converting from json.", e);
         }
     }
 
     @Override
-    protected byte[] writeInternal(T object, MultiMap requestHeaders) throws HttpMessageConverterException {
+    protected void writeInternal(T object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            return objectMapper.writeValueAsBytes(object);
-        } catch (JsonProcessingException e) {
+            httpOutputMessage.write(objectMapper.writeValueAsBytes(object));
+        } catch (Exception e) {
             throw new HttpMessageConverterException("Error converting to json.", e);
         }
+
     }
 }

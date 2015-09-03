@@ -20,18 +20,17 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
-import com.hubrick.vertx.rest.HttpMethod;
-import com.hubrick.vertx.rest.MediaType;
-import com.hubrick.vertx.rest.RestClientRequest;
-import com.hubrick.vertx.rest.RestClientResponse;
+import com.hubrick.vertx.rest.*;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.exception.HttpClientErrorException;
 import com.hubrick.vertx.rest.exception.HttpServerErrorException;
 import com.hubrick.vertx.rest.exception.RestClientException;
+import com.hubrick.vertx.rest.message.BufferedHttpOutputMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;
+import org.vertx.java.core.buffer.Buffer;
 import org.vertx.java.core.http.HttpClient;
 import org.vertx.java.core.http.HttpClientRequest;
 import org.vertx.java.core.http.HttpClientResponse;
@@ -39,10 +38,7 @@ import org.vertx.java.core.http.HttpHeaders;
 import org.vertx.java.core.json.impl.Base64;
 
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -59,9 +55,12 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private static final Logger log = LoggerFactory.getLogger(DefaultRestClientRequest.class);
 
     private final HttpClient httpClient;
+    private final BufferedHttpOutputMessage bufferedHttpOutputMessage = new BufferedHttpOutputMessage();
     private final List<HttpMessageConverter> httpMessageConverters;
     private final HttpClientRequest httpClientRequest;
     private Handler<Throwable> exceptionHandler;
+
+    private boolean headersCopied = false;
 
     public DefaultRestClientRequest(HttpClient httpClient,
                                     List<HttpMessageConverter> httpMessageConverters,
@@ -87,7 +86,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             httpClientRequest.setTimeout(timeoutInMillis);
         }
 
-        if(exceptionHandler != null) {
+        if (exceptionHandler != null) {
             httpClientRequest.exceptionHandler(exceptionHandler);
         }
     }
@@ -158,30 +157,30 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public MultiMap headers() {
-        return httpClientRequest.headers();
+        return bufferedHttpOutputMessage.getHeaders();
     }
 
     @Override
     public RestClientRequest putHeader(String name, String value) {
-        httpClientRequest.putHeader(name, value);
+        bufferedHttpOutputMessage.getHeaders().add(name, value);
         return this;
     }
 
     @Override
     public RestClientRequest putHeader(CharSequence name, CharSequence value) {
-        httpClientRequest.putHeader(name, value);
+        bufferedHttpOutputMessage.getHeaders().add(name, value);
         return this;
     }
 
     @Override
     public RestClientRequest putHeader(String name, Iterable<String> values) {
-        httpClientRequest.putHeader(name, values);
+        bufferedHttpOutputMessage.getHeaders().add(name, values);
         return this;
     }
 
     @Override
     public RestClientRequest putHeader(CharSequence name, Iterable<CharSequence> values) {
-        httpClientRequest.putHeader(name, values);
+        bufferedHttpOutputMessage.getHeaders().add(name, values);
         return this;
     }
 
@@ -199,10 +198,11 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public RestClientRequest sendHead() {
+        populateAcceptHeaderIfNotPresent();
+        copyHeadersToHttpClientRequest();
         httpClientRequest.sendHead();
         return this;
     }
-
 
     @Override
     public void end(Object requestObject) {
@@ -213,7 +213,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     @Override
     public void end() {
         populateAcceptHeaderIfNotPresent();
-        httpClientRequest.end();
+        handleRequest(null, true);
     }
 
     @Override
@@ -224,22 +224,22 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public void setContentType(MediaType contentType) {
-        httpClientRequest.headers().set(HttpHeaders.CONTENT_TYPE, contentType.toString());
+        bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_TYPE, contentType.toString());
     }
 
     @Override
     public MediaType getContentType() {
-        return MediaType.parseMediaType(httpClientRequest.headers().get(HttpHeaders.CONTENT_TYPE));
+        return MediaType.parseMediaType(bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE));
     }
 
     @Override
     public void setAcceptHeader(List<MediaType> mediaTypes) {
-        httpClientRequest.headers().set(HttpHeaders.ACCEPT, formatForAcceptHeader(mediaTypes));
+        bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.ACCEPT, formatForAcceptHeader(mediaTypes));
     }
 
     @Override
     public List<MediaType> getAcceptHeader() {
-        final String acceptHeader = httpClientRequest.headers().get(HttpHeaders.ACCEPT);
+        final String acceptHeader = bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.ACCEPT);
         if (Strings.isNullOrEmpty(acceptHeader)) {
             return Collections.emptyList();
         } else {
@@ -249,12 +249,12 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public void setBasicAuth(String userPassCombination) {
-        httpClientRequest.headers().set(HttpHeaders.AUTHORIZATION, "Basic " + Base64.encodeBytes(userPassCombination.getBytes(Charsets.UTF_8)));
+        bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.AUTHORIZATION, "Basic " + Base64.encodeBytes(userPassCombination.getBytes(Charsets.UTF_8)));
     }
 
     @Override
     public String getBasicAuth() {
-        final String base64UserPassCombination = httpClientRequest.headers().get(HttpHeaders.AUTHORIZATION);
+        final String base64UserPassCombination = bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.AUTHORIZATION);
         if (base64UserPassCombination != null && base64UserPassCombination.startsWith("Basic")) {
             return new String(Base64.decode(base64UserPassCombination), Charsets.UTF_8).replaceFirst("Basic", "").trim();
         } else {
@@ -272,16 +272,27 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private void handleRequest(Object requestObject, Boolean endRequest) {
         try {
             if (requestObject == null) {
-                final MultiMap httpHeaders = httpClientRequest.headers();
-                if (Strings.isNullOrEmpty(httpHeaders.get(HttpHeaders.CONTENT_LENGTH))) {
-                    httpClientRequest.putHeader(HttpHeaders.CONTENT_LENGTH, "0");
+                if (endRequest) {
+                    if (!httpClientRequest.isChunked() && Strings.isNullOrEmpty(bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_LENGTH))) {
+                        bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, "0");
+                    }
+
+                    copyHeadersToHttpClientRequest();
+                    httpClientRequest.end();
                 }
             } else {
                 final Class<?> requestType = requestObject.getClass();
                 final MediaType requestContentType = getContentType();
+
                 for (HttpMessageConverter httpMessageConverter : httpMessageConverters) {
                     if (httpMessageConverter.canWrite(requestType, requestContentType)) {
-                        httpMessageConverter.write(requestObject, requestContentType, httpClientRequest, endRequest);
+                        httpMessageConverter.write(requestObject, requestContentType, bufferedHttpOutputMessage);
+
+                        if (endRequest) {
+                            copyHeadersToHttpClientRequest();
+                            httpClientRequest.end(new Buffer(bufferedHttpOutputMessage.getBody()));
+                            logRequest();
+                        }
                         return;
                     }
                 }
@@ -297,15 +308,43 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             if (exceptionHandler != null) {
                 exceptionHandler.handle(t);
             } else {
-                throw t;
+                log.error("No exceptionHandler found to handler exception.", t);
             }
         }
     }
 
+    private void logRequest() {
+        if (log.isDebugEnabled()) {
+            final StringBuilder stringBuilder = new StringBuilder(256);
+            for (String headerName : httpClientRequest.headers().names()) {
+                for (String headerValue : httpClientRequest.headers().getAll(headerName)) {
+                    stringBuilder.append(headerName);
+                    stringBuilder.append(":");
+                    stringBuilder.append(" ");
+                    stringBuilder.append(headerValue);
+                    stringBuilder.append("\r\n");
+                }
+            }
+            stringBuilder.append("\r\n");
+            stringBuilder.append(new String(bufferedHttpOutputMessage.getBody(), Charsets.UTF_8));
+
+            log.debug("HTTP Request: \n{}", stringBuilder.toString());
+        }
+    }
+
+    private void copyHeadersToHttpClientRequest() {
+        if(!headersCopied) {
+            for (Map.Entry<String, String> header : bufferedHttpOutputMessage.getHeaders()) {
+                httpClientRequest.putHeader(header.getKey(), header.getValue());
+            }
+            headersCopied = true;
+        }
+    }
+
     private void populateAcceptHeaderIfNotPresent() {
-        final String acceptHeader = httpClientRequest.headers().get(HttpHeaders.ACCEPT);
+        final String acceptHeader = bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.ACCEPT);
         if (Strings.isNullOrEmpty(acceptHeader)) {
-            httpClientRequest.headers().set(
+            bufferedHttpOutputMessage.getHeaders().set(
                     HttpHeaders.ACCEPT,
                     formatForAcceptHeader(
                             httpMessageConverters

@@ -15,8 +15,11 @@
  */
 package com.hubrick.vertx.rest.converter;
 
+import com.hubrick.vertx.rest.HttpInputMessage;
+import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
+import org.vertx.java.core.Handler;
 import org.vertx.java.core.http.HttpClientRequest;
 import org.vertx.java.core.http.HttpClientResponse;
 
@@ -28,9 +31,11 @@ import java.util.List;
  */
 public interface HttpMessageConverter<T> {
 
-    T read(Class<? extends T> clazz, byte[] buffer, HttpClientResponse httpClientResponse) throws HttpMessageConverterException;
-    void write(T object, MediaType contentType, HttpClientRequest httpClientRequest, boolean endRequest) throws HttpMessageConverterException;
+    T read(Class<? extends T> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException;
+    void write(T object, MediaType contentType, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException;
+
     List<MediaType> getSupportedMediaTypes();
+
     boolean canRead(Class<?> clazz, MediaType mediaType);
     boolean canWrite(Class<?> clazz, MediaType mediaType);
 }

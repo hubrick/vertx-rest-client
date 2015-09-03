@@ -19,6 +19,8 @@ import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.exception.RestClientException;
+import com.hubrick.vertx.rest.message.BufferedHttpInputMessage;
+import com.hubrick.vertx.rest.message.BufferedHttpOutputMessage;
 import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;
 import org.vertx.java.core.http.HttpClientResponse;
@@ -105,7 +107,8 @@ public class DefaultRestClientResponse<T> implements RestClientResponse<T> {
             final MediaType mediaType = MediaType.parseMediaType(headers().get(HttpHeaders.CONTENT_TYPE));
             for (HttpMessageConverter httpMessageConverter : httpMessageConverters) {
                 if (httpMessageConverter.canRead(clazz, mediaType)) {
-                    return (T) httpMessageConverter.read(clazz, body, httpClientResponse);
+                    final BufferedHttpInputMessage bufferedHttpInputMessage = new BufferedHttpInputMessage(body, httpClientResponse.headers());
+                    return (T) httpMessageConverter.read(clazz, bufferedHttpInputMessage);
                 }
             }
 
