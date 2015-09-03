@@ -23,11 +23,14 @@ import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.vertx.java.core.Handler;
+import org.vertx.java.core.MultiMap;
 import org.vertx.java.core.Vertx;
+import org.vertx.java.core.http.CaseInsensitiveMultiMap;
 import org.vertx.java.core.http.HttpClient;
 
 import javax.net.ssl.SSLContext;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The default implementation.
@@ -44,6 +47,7 @@ public class DefaultRestClient implements RestClient {
     private final List<HttpMessageConverter> httpMessageConverters;
     private Handler<Throwable> exceptionHandler;
     private int globalRequestTimeoutInMillis = 0;
+    private final MultiMap globalHeaders = new CaseInsensitiveMultiMap();
 
     public DefaultRestClient(Vertx vertx, List<HttpMessageConverter> httpMessageConverters) {
         this.vertx = vertx;
@@ -126,6 +130,21 @@ public class DefaultRestClient implements RestClient {
     @Override
     public RestClient setGlobalRequestTimeout(int requestTimeoutInMillis) {
         this.globalRequestTimeoutInMillis = requestTimeoutInMillis;
+        return this;
+    }
+
+    @Override
+    public RestClient putGlobalHeaders(MultiMap headers) {
+        for(Map.Entry<String, String> header : headers) {
+            globalHeaders.add(header.getKey(), header.getValue());
+        }
+
+        return this;
+    }
+
+    @Override
+    public RestClient putGlobalHeader(String name, String value) {
+        globalHeaders.add(name, value);
         return this;
     }
 
@@ -286,6 +305,7 @@ public class DefaultRestClient implements RestClient {
                 responseClass,
                 responseHandler,
                 globalRequestTimeoutInMillis,
+                globalHeaders,
                 exceptionHandler
         );
     }

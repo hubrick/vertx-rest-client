@@ -58,9 +58,11 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private final BufferedHttpOutputMessage bufferedHttpOutputMessage = new BufferedHttpOutputMessage();
     private final List<HttpMessageConverter> httpMessageConverters;
     private final HttpClientRequest httpClientRequest;
+    private final MultiMap globalHeaders;
     private Handler<Throwable> exceptionHandler;
 
     private boolean headersCopied = false;
+    private boolean globalHeadersPopulated = false;
 
     public DefaultRestClientRequest(HttpClient httpClient,
                                     List<HttpMessageConverter> httpMessageConverters,
@@ -69,14 +71,17 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                                     Class<T> responseClass,
                                     Handler<RestClientResponse<T>> responseHandler,
                                     int timeoutInMillis,
+                                    MultiMap globalHeaders,
                                     @Nullable Handler<Throwable> exceptionHandler) {
         checkNotNull(httpClient, "httpClient must not be null");
         checkNotNull(httpMessageConverters, "dataMappers must not be null");
         checkArgument(!httpMessageConverters.isEmpty(), "dataMappers must not be empty");
+        checkNotNull(globalHeaders, "globalHeaders must not be null");
 
         this.httpClient = httpClient;
         this.httpMessageConverters = httpMessageConverters;
         this.exceptionHandler = exceptionHandler;
+        this.globalHeaders = globalHeaders;
 
         httpClientRequest = httpClient.request(method.toString(), uri, (httpClientResponse) -> {
             handleResponse(httpClientResponse, responseClass, responseHandler);
@@ -206,6 +211,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public void end(Object requestObject) {
+
         populateAcceptHeaderIfNotPresent();
         handleRequest(requestObject, true);
     }
@@ -341,10 +347,19 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         }
     }
 
+    private void populateGlobalHeaders() {
+        if(!globalHeadersPopulated) {
+            for (Map.Entry<String, String> header : globalHeaders) {
+                httpClientRequest.putHeader(header.getKey(), header.getValue());
+            }
+            globalHeadersPopulated = true;
+        }
+    }
+
     private void populateAcceptHeaderIfNotPresent() {
-        final String acceptHeader = bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.ACCEPT);
+        final String acceptHeader = httpClientRequest.headers().get(HttpHeaders.ACCEPT);
         if (Strings.isNullOrEmpty(acceptHeader)) {
-            bufferedHttpOutputMessage.getHeaders().set(
+            httpClientRequest.headers().set(
                     HttpHeaders.ACCEPT,
                     formatForAcceptHeader(
                             httpMessageConverters

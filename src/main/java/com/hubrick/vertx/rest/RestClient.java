@@ -16,6 +16,7 @@
 package com.hubrick.vertx.rest;
 
 import org.vertx.java.core.Handler;
+import org.vertx.java.core.MultiMap;
 
 /**
  * An REST client that maintains a pool of connections to a specific host, at a specific port. The client supports
@@ -153,6 +154,26 @@ public interface RestClient extends SslSupport<RestClient> {
      * @return a reference to this so multiple method calls can be chained together
      */
     RestClient setGlobalRequestTimeout(int timeout);
+
+    /**
+     * Set global headers which will be appended to every HTTP request.
+     * The headers defined per request will override this headers.
+     *
+     * @param headers The headers to add
+     * @return a reference to this so multiple method calls can be chained together
+     */
+    RestClient putGlobalHeaders(MultiMap headers);
+
+    /**
+     * Add a global header which will be appended to every HTTP request.
+     * The headers defined per request will override this headers.
+     *
+     * @param name The name of the header
+     * @param value The value of the header
+     * @return a reference to this so multiple method calls can be chained together
+     */
+    RestClient putGlobalHeader(String name, String value);
+
 
     /**
      * Set if the {@link com.hubrick.vertx.rest.RestClient} should try to use compression.
