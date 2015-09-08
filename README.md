@@ -17,7 +17,7 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
-    <version>1.2.0</version>
+    <version>1.3.0</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -25,7 +25,7 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 ### Vert.x mod.json
 ```json
 {
-    "includes": "com.hubrick.vertx~vertx-rest-client~1.2.0",
+    "includes": "com.hubrick.vertx~vertx-rest-client~1.3.0",
 }
 ```
 
@@ -155,6 +155,8 @@ If you want to have a RestClient per Verticle (the desired way) set an exception
  FormHttpMessageConverter           | Url-encodes the params. Content-Type: application/x-www-form-urlencoded
  JacksonJsonHttpMessageConverter    | Encodes the object to JSON. Content-Type: application/json
  StringHttpMessageConverter         | Outputs the plain string in the desired charset. Content-Type: plain/text
+ ByteArrayHttpMessageConverter      | Propagates the byte array to the http body. Activated by the presence of a byte[]. Content-Type: default application/octet-stream
+ MultipartHttpMessageConverter      | Adds support for mutipart uploads. Content-Type: multipart/form-data
  
 ## Exceptions
  Name                               | Description
