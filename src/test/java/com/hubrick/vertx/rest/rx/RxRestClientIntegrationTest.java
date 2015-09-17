@@ -17,27 +17,29 @@ package com.hubrick.vertx.rest.rx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import com.hubrick.vertx.rest.AbstractFunctionalTest;
 import com.hubrick.vertx.rest.RestClient;
+import com.hubrick.vertx.rest.RestClientOptions;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
 import com.hubrick.vertx.rest.impl.DefaultRestClient;
 import com.hubrick.vertx.rest.rx.impl.DefaultRxRestClient;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
 import org.junit.Test;
 import org.mockserver.model.Header;
-import org.vertx.testtools.VertxAssert;
 import rx.Observable;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import static com.google.common.io.Resources.getResource;
 import static com.google.common.io.Resources.toByteArray;
-import static org.hamcrest.CoreMatchers.anyOf;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
@@ -48,7 +50,7 @@ import static org.mockserver.model.HttpResponse.response;
 public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
-    public void testSimpleGETRequest() throws Exception {
+    public void testSimpleGETRequest(TestContext testContext) throws Exception {
         getMockServerClient().when(
                 request()
                         .withMethod("GET")
@@ -82,9 +84,14 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                         .withBody(toByteArray(getResource(RxRestClientIntegrationTest.class, "userResponse2.json")))
         );
 
+        final RestClientOptions clientOptions = new RestClientOptions();
+        clientOptions.setDefaultHost("localhost");
+        clientOptions.setDefaultPort(MOCKSERVER_PORT);
+        clientOptions.setMaxPoolSize(10);
 
         final RestClient restClient = new DefaultRestClient(
                 vertx,
+                clientOptions,
                 ImmutableList.of(
                         new FormHttpMessageConverter(),
                         new StringHttpMessageConverter(),
@@ -92,13 +99,10 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                 )
         );
 
-        restClient
-                .setHost("localhost")
-                .setPort(8089)
-                .setMaxPoolSize(10);
+        final Async async = testContext.async();
 
         final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
-        final Observable<RestClientResponse<UserSearchResponse[]>> response =  rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, restClientRequest -> restClientRequest.end());
+        final Observable<RestClientResponse<UserSearchResponse[]>> response = rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, restClientRequest -> restClientRequest.end());
         response.flatMap(userSearchResponseRestClientResponse -> {
             final List<Observable<RestClientResponse<UserResponse>>> responses = new LinkedList<>();
             for (UserSearchResponse userSearchResponse : userSearchResponseRestClientResponse.getBody()) {
@@ -107,8 +111,12 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
             }
 
             return Observable.merge(responses);
-        }).finallyDo(() -> VertxAssert.testComplete())
-                .forEach(userResponseRestClientResponse -> assertThat(userResponseRestClientResponse.getBody().getId(), anyOf(is("b9d8fb1a-38c5-45ea-a7ee-6450a964f4f8"), is("e5297618-c299-4157-a85c-4957c8204819"))));
+        }).finallyDo(async::complete).forEach(userResponseRestClientResponse -> {
+            final Set<UUID> ids = Sets.newHashSet(UUID.fromString("b9d8fb1a-38c5-45ea-a7ee-6450a964f4f8"), UUID.fromString("e5297618-c299-4157-a85c-4957c8204819"));
+            final UUID id = userResponseRestClientResponse.getBody().getId();
+            testContext.assertTrue(ids.contains(id), ids + " should contain " + id);
+        });
 
     }
+
 }
