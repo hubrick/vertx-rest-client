@@ -15,9 +15,9 @@
  */
 package com.hubrick.vertx.rest;
 
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.net.NetSocket;
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
+import io.vertx.core.net.NetSocket;
 
 import java.util.List;
 

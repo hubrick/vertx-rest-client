@@ -15,7 +15,7 @@
  */
 package com.hubrick.vertx.rest.rx.impl;
 
-import org.vertx.java.core.Handler;
+import io.vertx.core.Handler;
 import rx.Observable;
 import rx.Observer;
 import rx.Subscriber;

@@ -18,9 +18,9 @@ package com.hubrick.vertx.rest.exception;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.impl.DefaultRestClientResponse;
-import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.http.HttpClientResponse;
-import org.vertx.java.core.http.HttpHeaders;
+import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.HttpHeaders;
 
 import java.nio.charset.Charset;
 import java.util.List;

@@ -19,9 +19,6 @@ import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.http.HttpClientRequest;
-import org.vertx.java.core.http.HttpClientResponse;
 
 import java.util.List;
 

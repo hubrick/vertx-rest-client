@@ -25,9 +25,9 @@ import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
+import io.vertx.core.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vertx.java.core.http.HttpHeaders;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;

@@ -15,8 +15,9 @@
  */
 package com.hubrick.vertx.rest;
 
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.MultiMap;
+
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
 
 import java.util.List;
 
@@ -99,7 +100,7 @@ public interface RestClientRequest<T> {
     /**
      * Forces the head of the request to be written before {@link #end()} is called on the request or any data is
      * written to it. This is normally used
-     * to implement HTTP 100-continue handling, see {@link #continueHandler(org.vertx.java.core.Handler)} for more information.
+     * to implement HTTP 100-continue handling, see {@link #continueHandler(io.vertx.core.Handler)} for more information.
      *
      * @return A reference to this, so multiple method calls can be chained.
      */

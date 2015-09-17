@@ -16,12 +16,11 @@
 package com.hubrick.vertx.rest.message;
 
 import com.hubrick.vertx.rest.HttpOutputMessage;
-import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.http.CaseInsensitiveMultiMap;
+import io.vertx.core.MultiMap;
+import io.vertx.core.http.CaseInsensitiveHeaders;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Map;
 
 /**
@@ -30,7 +29,7 @@ import java.util.Map;
  */
 public class BufferedHttpOutputMessage implements HttpOutputMessage {
 
-    private MultiMap headers = new CaseInsensitiveMultiMap();
+    private MultiMap headers = new CaseInsensitiveHeaders();
     private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
     @Override
