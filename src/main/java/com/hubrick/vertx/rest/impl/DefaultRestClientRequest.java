@@ -63,6 +63,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     private boolean headersCopied = false;
     private boolean globalHeadersPopulated = false;
+    private String uri;
 
     public DefaultRestClientRequest(HttpClient httpClient,
                                     List<HttpMessageConverter> httpMessageConverters,
@@ -79,6 +80,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         checkNotNull(globalHeaders, "globalHeaders must not be null");
 
         this.httpClient = httpClient;
+        this.uri = uri;
         this.httpMessageConverters = httpMessageConverters;
         this.exceptionHandler = exceptionHandler;
         this.globalHeaders = globalHeaders;
@@ -102,7 +104,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             httpClientResponse.bodyHandler((buffer) -> {
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.warn("Http request FAILED. Return status: {}, message: {}, body: {}", new Object[]{httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                    log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
 
                 RuntimeException exception = null;
@@ -124,7 +126,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             httpClientResponse.bodyHandler((buffer) -> {
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.debug("Http request SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                    log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
 
                 try {
