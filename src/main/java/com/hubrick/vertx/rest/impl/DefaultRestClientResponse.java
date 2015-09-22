@@ -62,10 +62,6 @@ public class DefaultRestClientResponse<T> implements RestClientResponse<T> {
         this.body = body;
         this.httpClientResponse = httpClientResponse;
         this.exceptionHandler = exceptionHandler;
-
-        if(exceptionHandler != null) {
-            httpClientResponse.exceptionHandler(exceptionHandler);
-        }
     }
 
     @Override

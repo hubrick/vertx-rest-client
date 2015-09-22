@@ -109,6 +109,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         final Integer firstStatusDigit = httpClientResponse.statusCode() / 100;
         if (firstStatusDigit == 4 || firstStatusDigit == 5) {
             httpClientResponse.bodyHandler((buffer) -> {
+                httpClientResponse.exceptionHandler(null);
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
                     log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
@@ -131,6 +132,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             });
         } else {
             httpClientResponse.bodyHandler((buffer) -> {
+                httpClientResponse.exceptionHandler(null);
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
                     log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
