@@ -112,7 +112,7 @@ public class DefaultRestClientResponse<T> implements RestClientResponse<T> {
                 }
             }
 
-            throw new RestClientException("Could not find any suitable DataMapper for reading for media type " + mediaType);
+            throw new RestClientException("Could not find any suitable DataMapper for reading media type " + mediaType);
         } catch (Throwable t) {
             if(exceptionHandler != null) {
                 exceptionHandler.handle(t);
