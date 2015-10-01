@@ -20,25 +20,32 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
-import com.hubrick.vertx.rest.*;
+import com.google.common.io.BaseEncoding;
+import com.hubrick.vertx.rest.MediaType;
+import com.hubrick.vertx.rest.RestClientRequest;
+import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.exception.HttpClientErrorException;
 import com.hubrick.vertx.rest.exception.HttpServerErrorException;
 import com.hubrick.vertx.rest.exception.RestClientException;
 import com.hubrick.vertx.rest.message.BufferedHttpOutputMessage;
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientRequest;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.buffer.Buffer;
-import org.vertx.java.core.http.HttpClient;
-import org.vertx.java.core.http.HttpClientRequest;
-import org.vertx.java.core.http.HttpClientResponse;
-import org.vertx.java.core.http.HttpHeaders;
-import org.vertx.java.core.json.impl.Base64;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -85,7 +92,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         this.exceptionHandler = exceptionHandler;
         this.globalHeaders = globalHeaders;
 
-        httpClientRequest = httpClient.request(method.toString(), uri, (httpClientResponse) -> {
+        httpClientRequest = httpClient.request(method, uri, (HttpClientResponse httpClientResponse) -> {
             handleResponse(httpClientResponse, responseClass, responseHandler);
         });
 
@@ -102,6 +109,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         final Integer firstStatusDigit = httpClientResponse.statusCode() / 100;
         if (firstStatusDigit == 4 || firstStatusDigit == 5) {
             httpClientResponse.bodyHandler((buffer) -> {
+                httpClientResponse.exceptionHandler(null);
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
                     log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
@@ -124,6 +132,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             });
         } else {
             httpClientResponse.bodyHandler((buffer) -> {
+                httpClientResponse.exceptionHandler(null);
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
                     log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
@@ -257,14 +266,14 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public void setBasicAuth(String userPassCombination) {
-        bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.AUTHORIZATION, "Basic " + Base64.encodeBytes(userPassCombination.getBytes(Charsets.UTF_8)));
+        bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.AUTHORIZATION, "Basic " + BaseEncoding.base64().encode(userPassCombination.getBytes(Charsets.UTF_8)));
     }
 
     @Override
     public String getBasicAuth() {
         final String base64UserPassCombination = bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.AUTHORIZATION);
         if (base64UserPassCombination != null && base64UserPassCombination.startsWith("Basic")) {
-            return new String(Base64.decode(base64UserPassCombination), Charsets.UTF_8).replaceFirst("Basic", "").trim();
+            return new String(BaseEncoding.base64().decode(base64UserPassCombination), Charsets.UTF_8).replaceFirst("Basic", "").trim();
         } else {
             return null;
         }
@@ -298,7 +307,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
                         if (endRequest) {
                             copyHeadersToHttpClientRequest();
-                            httpClientRequest.end(new Buffer(bufferedHttpOutputMessage.getBody()));
+                            httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
                             logRequest();
                         }
                         return;

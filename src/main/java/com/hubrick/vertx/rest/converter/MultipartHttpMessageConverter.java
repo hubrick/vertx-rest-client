@@ -23,14 +23,18 @@ import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.converter.model.Part;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import com.hubrick.vertx.rest.message.MultipartHttpOutputMessage;
+import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.http.HttpHeaders;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;

@@ -20,12 +20,11 @@ import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.exception.RestClientException;
 import com.hubrick.vertx.rest.message.BufferedHttpInputMessage;
-import com.hubrick.vertx.rest.message.BufferedHttpOutputMessage;
-import org.vertx.java.core.Handler;
-import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.http.HttpClientResponse;
-import org.vertx.java.core.http.HttpHeaders;
-import org.vertx.java.core.net.NetSocket;
+import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.net.NetSocket;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -63,10 +62,6 @@ public class DefaultRestClientResponse<T> implements RestClientResponse<T> {
         this.body = body;
         this.httpClientResponse = httpClientResponse;
         this.exceptionHandler = exceptionHandler;
-
-        if(exceptionHandler != null) {
-            httpClientResponse.exceptionHandler(exceptionHandler);
-        }
     }
 
     @Override

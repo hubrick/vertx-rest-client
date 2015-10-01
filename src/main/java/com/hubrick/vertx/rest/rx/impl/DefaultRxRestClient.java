@@ -15,11 +15,11 @@
  */
 package com.hubrick.vertx.rest.rx.impl;
 
-import com.hubrick.vertx.rest.HttpMethod;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.rx.RxRestClient;
+import io.vertx.core.http.HttpMethod;
 import rx.Observable;
 import rx.functions.Action1;
 

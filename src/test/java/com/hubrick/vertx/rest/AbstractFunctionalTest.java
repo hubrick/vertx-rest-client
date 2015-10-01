@@ -15,8 +15,13 @@
  */
 package com.hubrick.vertx.rest;
 
+import io.vertx.core.Vertx;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.runner.RunWith;
 import org.mockserver.client.server.MockServerClient;
-import org.vertx.testtools.TestVerticle;
 
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
@@ -24,11 +29,25 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
  * @author Emir Dizdarevic
  * @since 1.1.0
  */
-public abstract class AbstractFunctionalTest extends TestVerticle {
+@RunWith(VertxUnitRunner.class)
+public abstract class AbstractFunctionalTest {
 
-    private static MockServerClient mockServerClient = startClientAndServer(8089);
+    protected Vertx vertx;
+
+    public static final int MOCKSERVER_PORT = 8089;
+    private static MockServerClient mockServerClient = startClientAndServer(MOCKSERVER_PORT);
 
     protected static MockServerClient getMockServerClient() {
         return mockServerClient;
+    }
+
+    @Before
+    public void before(TestContext context) {
+        vertx = Vertx.vertx();
+    }
+
+    @After
+    public void after(TestContext context) {
+        vertx.close(context.asyncAssertSuccess());
     }
 }

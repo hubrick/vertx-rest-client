@@ -16,7 +16,7 @@
 package com.hubrick.vertx.rest.message;
 
 import com.hubrick.vertx.rest.HttpInputMessage;
-import org.vertx.java.core.MultiMap;
+import io.vertx.core.MultiMap;
 
 /**
  * @author Emir Dizdarevic

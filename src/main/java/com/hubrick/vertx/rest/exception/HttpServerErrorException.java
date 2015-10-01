@@ -16,7 +16,7 @@
 package com.hubrick.vertx.rest.exception;
 
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
-import org.vertx.java.core.http.HttpClientResponse;
+import io.vertx.core.http.HttpClientResponse;
 
 import java.util.List;
 

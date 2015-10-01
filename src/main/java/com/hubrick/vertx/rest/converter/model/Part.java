@@ -15,7 +15,8 @@
  */
 package com.hubrick.vertx.rest.converter.model;
 
-import org.vertx.java.core.MultiMap;
+
+import io.vertx.core.MultiMap;
 
 /**
  * @author Emir Dizdarevic

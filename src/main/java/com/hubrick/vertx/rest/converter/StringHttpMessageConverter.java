@@ -21,8 +21,7 @@ import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
-import org.vertx.java.core.MultiMap;
-import org.vertx.java.core.http.HttpHeaders;
+import io.vertx.core.http.HttpHeaders;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
