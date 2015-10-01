@@ -9,9 +9,11 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 ## Compatibility
 - Java 8+
 - Vert.x 2.x.x
+- Vert.x 3.x.x
 
-## Dependency
+## Dependencies
 
+### Dependency Vert.x 2.x.x
 ### Maven
 ```xml
 <dependency>
@@ -27,6 +29,17 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 {
     "includes": "com.hubrick.vertx~vertx-rest-client~1.3.0",
 }
+```
+
+### Dependency Vert.x 3.x.x
+### Maven
+```xml
+<dependency>
+    <groupId>com.hubrick.vertx</groupId>
+    <artifactId>vertx-rest-client</artifactId>
+    <version>2.0.0</version>
+    <scope>provided</scope>
+</dependency>
 ```
 
 ## How to use
