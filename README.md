@@ -38,7 +38,6 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
     <version>2.0.0</version>
-    <scope>provided</scope>
 </dependency>
 ```
 
