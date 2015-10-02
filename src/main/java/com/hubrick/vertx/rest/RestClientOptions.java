@@ -16,11 +16,20 @@
 package com.hubrick.vertx.rest;
 
 import io.vertx.core.MultiMap;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.net.JksOptions;
+import io.vertx.core.net.KeyCertOptions;
+import io.vertx.core.net.PemKeyCertOptions;
+import io.vertx.core.net.PemTrustOptions;
+import io.vertx.core.net.PfxOptions;
+import io.vertx.core.net.TrustOptions;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author marcus
@@ -104,4 +113,177 @@ public class RestClientOptions extends HttpClientOptions {
         return globalRequestTimeoutInMillis;
     }
 
+    @Override
+    public RestClientOptions setSendBufferSize(int sendBufferSize) {
+        super.setSendBufferSize(sendBufferSize);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setReceiveBufferSize(int receiveBufferSize) {
+        super.setReceiveBufferSize(receiveBufferSize);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setReuseAddress(boolean reuseAddress) {
+        super.setReuseAddress(reuseAddress);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setTrafficClass(int trafficClass) {
+        super.setTrafficClass(trafficClass);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setTcpNoDelay(boolean tcpNoDelay) {
+        super.setTcpNoDelay(tcpNoDelay);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setTcpKeepAlive(boolean tcpKeepAlive) {
+        super.setTcpKeepAlive(tcpKeepAlive);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setSoLinger(int soLinger) {
+        super.setSoLinger(soLinger);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setUsePooledBuffers(boolean usePooledBuffers) {
+        super.setUsePooledBuffers(usePooledBuffers);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setIdleTimeout(int idleTimeout) {
+        super.setIdleTimeout(idleTimeout);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setSsl(boolean ssl) {
+        super.setSsl(ssl);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setKeyStoreOptions(JksOptions options) {
+        super.setKeyStoreOptions(options);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setPfxKeyCertOptions(PfxOptions options) {
+        super.setPfxKeyCertOptions(options);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setPemKeyCertOptions(PemKeyCertOptions options) {
+        super.setPemKeyCertOptions(options);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setTrustStoreOptions(JksOptions options) {
+        super.setTrustStoreOptions(options);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setPfxTrustOptions(PfxOptions options) {
+        super.setPfxTrustOptions(options);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setPemTrustOptions(PemTrustOptions options) {
+        super.setPemTrustOptions(options);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions addEnabledCipherSuite(String suite) {
+        super.addEnabledCipherSuite(suite);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions addCrlPath(String crlPath) throws NullPointerException {
+        super.addCrlPath(crlPath);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions addCrlValue(Buffer crlValue) throws NullPointerException {
+        super.addCrlValue(crlValue);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setConnectTimeout(int connectTimeout) {
+        super.setConnectTimeout(connectTimeout);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setTrustAll(boolean trustAll) {
+        super.setTrustAll(trustAll);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setMaxPoolSize(int maxPoolSize) {
+        super.setMaxPoolSize(maxPoolSize);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setKeepAlive(boolean keepAlive) {
+        super.setKeepAlive(keepAlive);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setPipelining(boolean pipelining) {
+        super.setPipelining(pipelining);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setVerifyHost(boolean verifyHost) {
+        super.setVerifyHost(verifyHost);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setTryUseCompression(boolean tryUseCompression) {
+        super.setTryUseCompression(tryUseCompression);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setMaxWebsocketFrameSize(int maxWebsocketFrameSize) {
+        super.setMaxWebsocketFrameSize(maxWebsocketFrameSize);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setDefaultHost(String defaultHost) {
+        super.setDefaultHost(defaultHost);
+        return this;
+    }
+
+    @Override
+    public RestClientOptions setDefaultPort(int defaultPort) {
+        super.setDefaultPort(defaultPort);
+        return this;
+    }
 }
