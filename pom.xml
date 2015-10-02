@@ -35,22 +35,6 @@
         <java.version>1.8</java.version>
         <arguments />
 
-        <!-- Set pullInDeps to true if you want any modules specified in the 'includes' and 'deploys' fields
-        in your mod.json to be automatically pulled in during packaging and added inside your module. Doing this means your
-        module won't download and install those dependencies at run-time when they're first requested. -->
-        <vertx.pullInDeps>false</vertx.pullInDeps>
-
-        <!-- Set createFatJar to true if you want to create a fat executable jar which contains the Vert.x binaries
-        along with the module so it can be run with java -jar <jarname> -->
-        <vertx.createFatJar>false</vertx.createFatJar>
-
-        <!--Vertx module name-->
-        <module.name>${project.groupId}~${project.artifactId}~${project.version}</module.name>
-
-        <!-- The directory where the module will be assembled - you can override this on the command line
-        with -Dmods.directory=mydir -->
-        <mods.directory>target/mods</mods.directory>
-
         <!--Dependency versions-->
         <vertx.version>3.0.0</vertx.version>
         <junit.version>4.11</junit.version>
@@ -95,9 +79,9 @@
             <version>${findbugs.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.netflix.rxjava</groupId>
-            <artifactId>rxjava-core</artifactId>
-            <version>0.20.7</version>
+            <groupId>io.reactivex</groupId>
+            <artifactId>rxjava</artifactId>
+            <version>1.0.14</version>
         </dependency>
 
         <!-- Logging -->
@@ -183,8 +167,6 @@
                     <target>${java.version}</target>
                 </configuration>
             </plugin>
-
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -201,16 +183,6 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${maven.failsafe.plugin.version}</version>
                 <configuration>
-                    <systemProperties>
-                        <property>
-                            <name>vertx.mods</name>
-                            <value>${mods.directory}</value>
-                        </property>
-                        <property>
-                            <name>vertx.modulename</name>
-                            <value>${module.name}</value>
-                        </property>
-                    </systemProperties>
                     <includes>
                         <include>**/*IntegrationTest.java</include>
                         <include>**/*FunctionalTest.java</include>
