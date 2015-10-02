@@ -43,7 +43,8 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 
 ## How to use
 
-### Simple example
+### Vertx 2.x.x
+#### Simple example 
 
 ```java
 public class ExampleVerticle extends Verticle {
@@ -88,7 +89,7 @@ public class ExampleVerticle extends Verticle {
 }
 ```
 
-### RxJava example
+#### RxJava example
 ```java
 public class ExampleVerticle extends Verticle {
 
@@ -108,6 +109,93 @@ public class ExampleVerticle extends Verticle {
                                                           .setPort(80)
                                                           .setMaxPoolSize(500);
                                                           
+        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
+                                     
+        // GET example
+        final Observable<RestClientResponse> getRestClientResponse = rxRestClient.get("/api/users/123", SomeReturnObject.class, restClientRequest -> restClientRequest.end());
+        getRestClientResponse.subscribe(
+            getRestClientResponse -> { 
+                // Handle response
+            },
+            error -> {
+                // Handle exception
+            }
+        );
+    }
+}
+```
+
+### Vertx 3.x.x
+#### Simple example 
+
+```java
+public class ExampleVerticle extends Verticle {
+
+    @Override
+    public void start() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+            new FormHttpMessageConverter(), 
+            new StringHttpMessageConverter(), 
+            new JacksonJsonHttpMessageConverter(objectMapper)
+        );
+    
+        final RestClientOptions restClientOptions = new RestClientOptions();
+        restClientOptions.setConnectTimeout(500);
+        restClientOptions.setGlobalRequestTimeout(300);
+        restClientOptions.setDefaultHost(80);
+        restClientOptions.setDefaultPort(applicationConfig.getSendGridServicePort());
+        restClientOptions.setKeepAlive(true);
+        restClientOptions.setMaxPoolSize(500);
+
+        final RestClient restClient = new DefaultRestClient(vertx, restClientOptions, httpMessageConverters);
+                                     
+        // GET example
+        final RestClientRequest getRestClientRequest = restClient.get("/api/users/123", SomeReturnObject.class, getRestResponse -> {
+            final SomeReturnObject someReturnObject = getRestResponse.getBody();
+            // TODO: Handle response
+        });
+        getRestClientRequest.exceptionHandler(exception -> {
+            // TODO: Handle exception
+        });
+        getRestClientRequest.end();
+        
+        // POST example
+        final RestClientRequest postRestClientRequest = restClient.post("/api/users/123", SomeReturnObject.class, portRestResponse -> {
+            final SomeReturnObject someReturnObject = portRestResponse.getBody();
+            // TODO: Handle response
+        });
+        postRestClientRequest.exceptionHandler(exception -> {
+            // TODO: Handle exception
+        });
+        postRestClientRequest.setContentType(MediaType.TEXT_PLAIN);
+        postRestClientRequest.end("Some data");
+    }
+}
+```
+
+#### RxJava example
+```java
+public class ExampleVerticle extends Verticle {
+
+    @Override
+    public void start() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+            new FormHttpMessageConverter(), 
+            new StringHttpMessageConverter(), 
+            new JacksonJsonHttpMessageConverter(objectMapper)
+        );
+        
+        final RestClientOptions restClientOptions = new RestClientOptions();
+        restClientOptions.setConnectTimeout(500);
+        restClientOptions.setGlobalRequestTimeout(300);
+        restClientOptions.setDefaultHost(80);
+        restClientOptions.setDefaultPort(applicationConfig.getSendGridServicePort());
+        restClientOptions.setKeepAlive(true);
+        restClientOptions.setMaxPoolSize(500);
+
+        final RestClient restClient = new DefaultRestClient(vertx, restClientOptions, httpMessageConverters);
         final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
                                      
         // GET example
