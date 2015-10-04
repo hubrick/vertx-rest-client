@@ -143,8 +143,8 @@ public class ExampleVerticle extends Verticle {
         final RestClientOptions restClientOptions = new RestClientOptions()
             .setConnectTimeout(500)
             .setGlobalRequestTimeout(300)
-            .setDefaultHost(80)
-            .setDefaultPort(applicationConfig.getSendGridServicePort())
+            .setDefaultHost("example.com")
+            .setDefaultPort(80)
             .setKeepAlive(true)
             .setMaxPoolSize(500);
 
@@ -190,8 +190,8 @@ public class ExampleVerticle extends Verticle {
         final RestClientOptions restClientOptions = new RestClientOptions()
             .setConnectTimeout(500)
             .setGlobalRequestTimeout(300)
-            .setDefaultHost(80)
-            .setDefaultPort(applicationConfig.getSendGridServicePort())
+            .setDefaultHost("example.com")
+            .setDefaultPort(80)
             .setKeepAlive(true)
             .setMaxPoolSize(500);
 
