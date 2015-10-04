@@ -37,7 +37,7 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
-    <version>2.0.0</version>
+    <version>2.0.2</version>
 </dependency>
 ```
 
@@ -140,13 +140,13 @@ public class ExampleVerticle extends Verticle {
             new JacksonJsonHttpMessageConverter(objectMapper)
         );
     
-        final RestClientOptions restClientOptions = new RestClientOptions();
-        restClientOptions.setConnectTimeout(500);
-        restClientOptions.setGlobalRequestTimeout(300);
-        restClientOptions.setDefaultHost(80);
-        restClientOptions.setDefaultPort(applicationConfig.getSendGridServicePort());
-        restClientOptions.setKeepAlive(true);
-        restClientOptions.setMaxPoolSize(500);
+        final RestClientOptions restClientOptions = new RestClientOptions()
+            .setConnectTimeout(500)
+            .setGlobalRequestTimeout(300)
+            .setDefaultHost(80)
+            .setDefaultPort(applicationConfig.getSendGridServicePort())
+            .setKeepAlive(true)
+            .setMaxPoolSize(500);
 
         final RestClient restClient = new DefaultRestClient(vertx, restClientOptions, httpMessageConverters);
                                      
@@ -187,13 +187,13 @@ public class ExampleVerticle extends Verticle {
             new JacksonJsonHttpMessageConverter(objectMapper)
         );
         
-        final RestClientOptions restClientOptions = new RestClientOptions();
-        restClientOptions.setConnectTimeout(500);
-        restClientOptions.setGlobalRequestTimeout(300);
-        restClientOptions.setDefaultHost(80);
-        restClientOptions.setDefaultPort(applicationConfig.getSendGridServicePort());
-        restClientOptions.setKeepAlive(true);
-        restClientOptions.setMaxPoolSize(500);
+        final RestClientOptions restClientOptions = new RestClientOptions()
+            .setConnectTimeout(500)
+            .setGlobalRequestTimeout(300)
+            .setDefaultHost(80)
+            .setDefaultPort(applicationConfig.getSendGridServicePort())
+            .setKeepAlive(true)
+            .setMaxPoolSize(500);
 
         final RestClient restClient = new DefaultRestClient(vertx, restClientOptions, httpMessageConverters);
         final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
