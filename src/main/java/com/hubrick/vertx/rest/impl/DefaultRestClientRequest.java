@@ -214,6 +214,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public RestClientRequest sendHead() {
+        populateGlobalHeaders();
         populateAcceptHeaderIfNotPresent();
         copyHeadersToHttpClientRequest();
         httpClientRequest.sendHead();
