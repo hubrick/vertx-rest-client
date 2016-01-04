@@ -214,7 +214,6 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public RestClientRequest sendHead() {
-        populateGlobalHeaders();
         populateAcceptHeaderIfNotPresent();
         copyHeadersToHttpClientRequest();
         httpClientRequest.sendHead();
@@ -223,7 +222,6 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public void end(Object requestObject) {
-
         populateAcceptHeaderIfNotPresent();
         handleRequest(requestObject, true);
     }
@@ -351,6 +349,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     }
 
     private void copyHeadersToHttpClientRequest() {
+        populateGlobalHeaders();
         if(!headersCopied) {
             for (Map.Entry<String, String> header : bufferedHttpOutputMessage.getHeaders()) {
                 httpClientRequest.putHeader(header.getKey(), header.getValue());
