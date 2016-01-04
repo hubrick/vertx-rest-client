@@ -110,7 +110,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         if (firstStatusDigit == 4 || firstStatusDigit == 5) {
             httpClientResponse.bodyHandler((buffer) -> {
                 httpClientResponse.exceptionHandler(null);
-                if (log.isDebugEnabled()) {
+                if (log.isWarnEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
                     log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
