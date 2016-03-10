@@ -112,7 +112,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 httpClientResponse.exceptionHandler(null);
                 if (log.isWarnEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                    log.error("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
 
                 RuntimeException exception = null;
