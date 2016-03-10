@@ -20,6 +20,8 @@ import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.rx.RxRestClient;
 import io.vertx.core.http.HttpMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.functions.Action1;
 
@@ -28,6 +30,8 @@ import rx.functions.Action1;
  * @since 1.1.0
  */
 public class DefaultRxRestClient implements RxRestClient {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultRxRestClient.class);
 
     private final RestClient restClient;
 
@@ -85,7 +89,10 @@ public class DefaultRxRestClient implements RxRestClient {
         final DefaultRxRestClientResponseMemoizeHandler<T> handler = new DefaultRxRestClientResponseMemoizeHandler<>();
 
         final RestClientRequest<T> originalRequest = restClient.request(method, uri, responseClass, handler);
-        originalRequest.exceptionHandler(event -> handler.fail(event));
+        originalRequest.exceptionHandler(exception -> {
+            log.error("Http {} request to {} FAILED with exception: {}", new Object[]{method, uri, exception.getMessage(), exception});
+            handler.fail(exception);
+        });
         final RestClientRequest<T> request = new DefaultRxRestClientRequest<>(originalRequest);
 
         // Use the builder to create the full request (or start upload)
@@ -94,6 +101,7 @@ public class DefaultRxRestClient implements RxRestClient {
             requestBuilder.call(request);
         } catch (Exception e) {
             // Request will never be sent so trigger error on the returned observable
+            log.error("Request builder call for {} request to {} FAILED with exception: {}", new Object[]{method, uri, e.getMessage(), e});
             handler.fail(e);
         }
 
