@@ -89,7 +89,6 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         this.httpClient = httpClient;
         this.uri = uri;
         this.httpMessageConverters = httpMessageConverters;
-        this.exceptionHandler = exceptionHandler;
         this.globalHeaders = globalHeaders;
 
         httpClientRequest = httpClient.request(method, uri, (HttpClientResponse httpClientResponse) -> {
@@ -101,7 +100,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         }
 
         if (exceptionHandler != null) {
-            httpClientRequest.exceptionHandler(exceptionHandler);
+            exceptionHandler(exceptionHandler);
         }
     }
 
@@ -280,8 +279,13 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public RestClientRequest exceptionHandler(Handler<Throwable> exceptionHandler) {
-        this.exceptionHandler = exceptionHandler;
-        httpClientRequest.exceptionHandler(exceptionHandler);
+        final Handler<Throwable> wrapped = (t) -> {
+            log.warn("Error requesting {}: {}", uri, t.getMessage(), t);
+            exceptionHandler.handle(t);
+        };
+
+        this.exceptionHandler = wrapped;
+        httpClientRequest.exceptionHandler(wrapped);
         return this;
     }
 
