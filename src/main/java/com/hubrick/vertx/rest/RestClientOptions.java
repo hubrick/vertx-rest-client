@@ -26,12 +26,10 @@ import io.vertx.core.net.PemTrustOptions;
 import io.vertx.core.net.PfxOptions;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * @author marcus
@@ -41,7 +39,7 @@ public class RestClientOptions extends HttpClientOptions {
 
     private static final int DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS = 0;
 
-    private Optional<RequestCacheOptions> globalRequestCacheOptions = Optional.empty();
+    private RequestCacheOptions globalRequestCacheOptions;
     private int globalRequestTimeoutInMillis = DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS;
     private MultiMap globalHeaders = new CaseInsensitiveHeaders();
 
@@ -82,7 +80,7 @@ public class RestClientOptions extends HttpClientOptions {
             if (evictBefore != null) {
                 requestCacheOptions.withEvictBefore(evictBefore);
             }
-            globalRequestCacheOptions = Optional.of(requestCacheOptions);
+            globalRequestCacheOptions = requestCacheOptions;
         }
         globalHeaders = new CaseInsensitiveHeaders();
         globalRequestTimeoutInMillis = json.getInteger("globalRequestTimeoutInMillis", DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS);
@@ -141,7 +139,7 @@ public class RestClientOptions extends HttpClientOptions {
     }
 
     /**
-     * Sets the cache config and enables it for all request. Default is Optional.empty().
+     * Sets the cache config and enables it for all request. Default is null.
      * It can be overridden on the request level.
      * 
      * The cache key is generated from the url, the headers and the request body.
@@ -149,13 +147,12 @@ public class RestClientOptions extends HttpClientOptions {
      * @param requestCacheOptions The request cache config
      * @return a reference to this so multiple method calls can be chained together
      */
-    public RestClientOptions setGlobalRequestCacheOptions(Optional<RequestCacheOptions> requestCacheOptions) {
-        checkNotNull(requestCacheOptions, "requestCacheOptions must not be null");
+    public RestClientOptions setGlobalRequestCacheOptions(RequestCacheOptions requestCacheOptions) {
         globalRequestCacheOptions = requestCacheOptions;
         return this;
     }
 
-    public Optional<RequestCacheOptions> getGlobalRequestCacheOptions() {
+    public RequestCacheOptions getGlobalRequestCacheOptions() {
         return globalRequestCacheOptions;
     }
 

@@ -38,7 +38,6 @@ import rx.functions.Func0;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -149,36 +148,41 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
     public void testRequestWithCache(TestContext testContext) throws Exception {
-        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(10000)), 1);
+        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(10000), 1);
     }
 
     @Test
     public void testRequestWithoutCache(TestContext testContext) throws Exception {
-        testRequestCache(testContext, Optional.empty(), 3);
+        testRequestCache(testContext, null, 3);
+    }
+
+    @Test
+    public void testRequestWithCacheEvictAll(TestContext testContext) throws Exception {
+        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(10000).withEvictAllBefore(true), 3);
     }
 
     @Test
     public void testRequestWithCacheEvicted(TestContext testContext) throws Exception {
-        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 1);
+        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 1);
 
         // Wait until evicted
         Thread.sleep(5000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 1);
+        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 1);
     }
 
     @Test
     public void testRequestWithCacheNotEviction(TestContext testContext) throws Exception {
-        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 1);
+        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 1);
 
         Thread.sleep(1000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 0);
+        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 0);
     }
 
-    private void testRequestCache(TestContext testContext, Optional<RequestCacheOptions> requestCacheOptions, int timesCalled) throws Exception {
+    private void testRequestCache(TestContext testContext, RequestCacheOptions requestCacheOptions, int timesCalled) throws Exception {
 
         final HttpRequest httpRequest = request().withMethod("GET").withPath("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819");
         getMockServerClient().when(
@@ -191,7 +195,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         );
 
         final Async async = testContext.async();
-        final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.withRequestCache(requestCacheOptions).end())
+        final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
                 .map(userResponseRestClientResponse -> userResponseRestClientResponse.getBody());
 
         Observable.defer(request)
