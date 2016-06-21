@@ -15,8 +15,6 @@
  */
 package com.hubrick.vertx.rest.impl;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientOptions;
 import com.hubrick.vertx.rest.RestClientRequest;
@@ -30,7 +28,9 @@ import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The default implementation.
@@ -42,17 +42,8 @@ public class DefaultRestClient implements RestClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultRestClient.class);
 
-    private final Cache<MultiKey, RestClientResponse> requestCache = CacheBuilder
-            .newBuilder()
-            .concurrencyLevel(1)
-            .recordStats()
-            .build();
-
-    private final Cache<MultiKey, Long> evictionTimersCache = CacheBuilder
-            .newBuilder()
-            .concurrencyLevel(1)
-            .recordStats()
-            .build();
+    private final Map<MultiKey, RestClientResponse> requestCache = new HashMap<>();
+    private final Map<MultiKey, Long> evictionTimersCache = new HashMap<>();
 
     private final Vertx vertx;
     private final HttpClient httpClient;

@@ -19,7 +19,6 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
-import com.google.common.cache.Cache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.io.BaseEncoding;
 import com.hubrick.vertx.rest.MediaType;
@@ -48,6 +47,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -74,8 +74,8 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private final HttpClientRequest httpClientRequest;
     private final MultiMap globalHeaders;
     private final Handler<RestClientResponse<T>> responseHandler;
-    private final Cache<MultiKey, RestClientResponse> requestCache;
-    private final Cache<MultiKey, Long> evictionTimersCache;
+    private final Map<MultiKey, RestClientResponse> requestCache;
+    private final Map<MultiKey, Long> evictionTimersCache;
     private Handler<Throwable> exceptionHandler;
 
     private RequestCacheOptions requestCacheOptions;
@@ -90,8 +90,8 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                                     String uri,
                                     Class<T> responseClass,
                                     Handler<RestClientResponse<T>> responseHandler,
-                                    Cache<MultiKey, RestClientResponse> requestCache,
-                                    Cache<MultiKey, Long> evictionTimersCache,
+                                    Map<MultiKey, RestClientResponse> requestCache,
+                                    Map<MultiKey, Long> evictionTimersCache,
                                     int timeoutInMillis,
                                     RequestCacheOptions requestCacheOptions,
                                     MultiMap globalHeaders,
@@ -393,18 +393,40 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
             final long timerId = vertx.setTimer(requestCacheOptions.getTtlInMillis(), timerIdRef -> {
                 log.debug("EVICTING entry from cache for key {}", key);
-                requestCache.invalidate(key);
-                evictionTimersCache.invalidate(key);
+                requestCache.remove(key);
+                evictionTimersCache.remove(key);
             });
             evictionTimersCache.put(key, timerId);
         }
     }
 
     private void cancelTimerAndInvalidateTimerCache(MultiKey key) {
-        final Long previousTimeId = evictionTimersCache.getIfPresent(key);
+        final Long previousTimeId = evictionTimersCache.get(key);
         if(previousTimeId != null) {
             vertx.cancelTimer(previousTimeId);
-            evictionTimersCache.invalidate(key);
+            evictionTimersCache.remove(key);
+        }
+    }
+
+    private void evictBefore(MultiKey key) {
+        if (requestCacheOptions != null && requestCacheOptions.getEvictBefore()) {
+            log.debug("EVICTING entry from cache for key {}", key);
+            requestCache.remove(key);
+            cancelTimerAndInvalidateTimerCache(key);
+        }
+    }
+
+    private void evictAllBefore() {
+        if(requestCacheOptions != null && requestCacheOptions.getEvictAllBefore()) {
+            log.debug("EVICTING all entries from cache");
+            requestCache.clear();
+
+            final Iterator<Map.Entry<MultiKey, Long>> entries = evictionTimersCache.entrySet().iterator();
+            while (entries.hasNext()) {
+                final Map.Entry<MultiKey, Long> entry = entries.next();
+                vertx.cancelTimer(entry.getValue());
+                entries.remove();
+            }
         }
     }
 
@@ -413,21 +435,12 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         writeContentLength();
 
         final MultiKey key = createCacheKey(uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
-        if (requestCacheOptions != null && requestCacheOptions.getEvictBefore()) {
-            log.debug("EVICTING entry from cache for key {}", key);
-            requestCache.invalidate(key);
-            cancelTimerAndInvalidateTimerCache(key);
-        }
-
-        if(requestCacheOptions != null && requestCacheOptions.getEvictAllBefore()) {
-            log.debug("EVICTING all entries from cache");
-            requestCache.invalidateAll();
-            evictionTimersCache.asMap().entrySet().stream().forEach(e -> cancelTimerAndInvalidateTimerCache(e.getKey()));
-        }
+        evictBefore(key);
+        evictAllBefore();
 
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
             try {
-                final RestClientResponse cachedRestClientResponse = requestCache.getIfPresent(key);
+                final RestClientResponse cachedRestClientResponse = requestCache.get(key);
                 if (cachedRestClientResponse != null) {
                     log.debug("Cache HIT. Retrieving entry from cache for key {}", key);
                     responseHandler.handle(cachedRestClientResponse);
