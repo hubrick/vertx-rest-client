@@ -29,10 +29,12 @@ public class RequestCacheOptions {
 
     private static final int DEFAULT_REQUEST_CACHE_TTL_IN_MILLIS = 3000;
     private static final boolean DEFAULT_EVICT_BEFORE = false;
+    private static final boolean DEFAULT_EVICT_ALL_BEFORE = false;
     private static final Set<Integer> DEFAULT_CACHED_STATUS_CODES = Collections.singleton(200);
 
     private int ttlInMillis = DEFAULT_REQUEST_CACHE_TTL_IN_MILLIS;
     private boolean evictBefore = DEFAULT_EVICT_BEFORE;
+    private boolean evictAllBefore = DEFAULT_EVICT_ALL_BEFORE;
     private Set<Integer> cachedStatusCodes = DEFAULT_CACHED_STATUS_CODES;
 
     /**
@@ -65,6 +67,21 @@ public class RequestCacheOptions {
 
     public boolean getEvictBefore() {
         return evictBefore;
+    }
+
+    /**
+     * If an eviction for the whole cache should happen before fetching.
+     *
+     * @param evictAllBefore If set to true the whole cache will be evicted
+     * @return A reference to this, so multiple method calls can be chained.
+     */
+    public RequestCacheOptions withEvictAllBefore(boolean evictAllBefore) {
+        this.evictAllBefore = evictAllBefore;
+        return this;
+    }
+
+    public boolean getEvictAllBefore() {
+        return evictAllBefore;
     }
 
     /**

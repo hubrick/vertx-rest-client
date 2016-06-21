@@ -20,7 +20,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Represents a client-side REST request.<p>
@@ -145,15 +144,15 @@ public interface RestClientRequest<T> {
     MediaType getContentType();
 
     /**
-     * Sets the cache to enabled for this request. Default is Optional.empty().
+     * Sets the cache to enabled for this request. Default is null.
      * It will override the global settings.
      *
      * The cache key is generated from the url and request body.
      *
-     * @param requestCacheOptions The cache config for this reuqest. If Optional.empty() it will be disabled
+     * @param requestCacheOptions The cache config for this request. If null it will be disabled
      * @return A reference to this, so multiple method calls can be chained.
      */
-    RestClientRequest<T> withRequestCache(Optional<RequestCacheOptions> requestCacheOptions);
+    RestClientRequest<T> setRequestCache(RequestCacheOptions requestCacheOptions);
 
     /**
      * Sets a List of MediaTypes for the Accept header. If not set the default value

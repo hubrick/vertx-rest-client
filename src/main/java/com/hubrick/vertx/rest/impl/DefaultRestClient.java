@@ -48,6 +48,12 @@ public class DefaultRestClient implements RestClient {
             .recordStats()
             .build();
 
+    private final Cache<MultiKey, Long> evictionTimersCache = CacheBuilder
+            .newBuilder()
+            .concurrencyLevel(1)
+            .recordStats()
+            .build();
+
     private final Vertx vertx;
     private final HttpClient httpClient;
     private final List<HttpMessageConverter> httpMessageConverters;
@@ -141,6 +147,7 @@ public class DefaultRestClient implements RestClient {
                 responseClass,
                 responseHandler,
                 requestCache,
+                evictionTimersCache,
                 options.getGlobalRequestTimeoutInMillis(),
                 options.getGlobalRequestCacheOptions(),
                 options.getGlobalHeaders(),

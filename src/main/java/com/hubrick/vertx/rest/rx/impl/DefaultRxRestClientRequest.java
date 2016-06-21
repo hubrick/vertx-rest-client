@@ -22,7 +22,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * @author Emir Dizdarevic
@@ -117,8 +116,8 @@ public class DefaultRxRestClientRequest<T> implements RestClientRequest<T> {
     }
 
     @Override
-    public RestClientRequest<T> withRequestCache(Optional<RequestCacheOptions> requestCacheOptions) {
-        return decorated.withRequestCache(requestCacheOptions);
+    public RestClientRequest<T> setRequestCache(RequestCacheOptions requestCacheOptions) {
+        return decorated.setRequestCache(requestCacheOptions);
     }
 
     @Override
