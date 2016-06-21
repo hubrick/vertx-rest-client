@@ -39,7 +39,7 @@ public class RequestCacheOptions {
 
     /**
      * Sets the time to live for the request cache entries. Default is 3000 millis.
-     * It will override the global settings.
+     * This will only work with GET
      *
      * @param ttlInMillis The quantity of time in milliseconds.
      * @return A reference to this, so multiple method calls can be chained.
@@ -56,6 +56,7 @@ public class RequestCacheOptions {
 
     /**
      * If an eviction for the same request should happen before fetching
+     * This will work with GET, POST, PUT, DELETE
      *
      * @param evictBefore If set to true this request will be evicted and re-cached
      * @return A reference to this, so multiple method calls can be chained.
@@ -71,6 +72,7 @@ public class RequestCacheOptions {
 
     /**
      * If an eviction for the whole cache should happen before fetching.
+     * This will work with GET, POST, PUT, DELETE
      *
      * @param evictAllBefore If set to true the whole cache will be evicted
      * @return A reference to this, so multiple method calls can be chained.
@@ -86,7 +88,8 @@ public class RequestCacheOptions {
 
     /**
      * Defines the status codes which will be cached. Default is 200 only.
-     *
+     * This will only work with GET
+     * 
      * @param cachedStatusCodes The status codes to cache
      * @return A reference to this, so multiple method calls can be chained.
      */
