@@ -43,6 +43,7 @@ public abstract class AbstractFunctionalTest {
 
     @Before
     public void before(TestContext context) {
+        mockServerClient.reset();
         vertx = Vertx.vertx();
     }
 

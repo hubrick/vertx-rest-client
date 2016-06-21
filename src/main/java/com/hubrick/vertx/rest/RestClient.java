@@ -16,8 +16,13 @@
 package com.hubrick.vertx.rest;
 
 
+import com.hubrick.vertx.rest.converter.HttpMessageConverter;
+import com.hubrick.vertx.rest.impl.DefaultRestClient;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
+
+import java.util.List;
 
 /**
  * An REST client that maintains a pool of connections to a specific host, at a specific port. The client supports
@@ -33,6 +38,29 @@ import io.vertx.core.http.HttpMethod;
  * @since 1.0.0
  */
 public interface RestClient {
+
+    /**
+     *  Creates an instance of {@link DefaultRestClient}
+     *
+     * @param vertx The vertx instance
+     * @param clientOptions Rest client options
+     * @param httpMessageConverters defined http message converters
+     * @return A instance of RxRestClient
+     */
+    static RestClient create(Vertx vertx, RestClientOptions clientOptions, List<HttpMessageConverter> httpMessageConverters) {
+        return new DefaultRestClient(vertx, clientOptions, httpMessageConverters);
+    }
+
+    /**
+     *  Creates an instance of {@link DefaultRestClient} with default RestClientOptions
+     *
+     * @param vertx The vertx instance
+     * @param httpMessageConverters defined http message converters
+     * @return A instance of RxRestClient
+     */
+    static RestClient create(Vertx vertx, List<HttpMessageConverter> httpMessageConverters) {
+        return new DefaultRestClient(vertx, new RestClientOptions(), httpMessageConverters);
+    }
 
     /**
      * Set an exception handler. This exception handler will be inherited by the

@@ -21,15 +21,17 @@ import io.vertx.core.http.CaseInsensitiveHeaders;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.JksOptions;
-import io.vertx.core.net.KeyCertOptions;
 import io.vertx.core.net.PemKeyCertOptions;
 import io.vertx.core.net.PemTrustOptions;
 import io.vertx.core.net.PfxOptions;
-import io.vertx.core.net.TrustOptions;
 
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * @author marcus
@@ -37,9 +39,11 @@ import java.util.Set;
  */
 public class RestClientOptions extends HttpClientOptions {
 
-    private static final Integer DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS = 0;
-    private MultiMap globalHeaders = new CaseInsensitiveHeaders();
+    private static final int DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS = 0;
+
+    private Optional<RequestCacheOptions> globalRequestCacheOptions = Optional.empty();
     private int globalRequestTimeoutInMillis = DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS;
+    private MultiMap globalHeaders = new CaseInsensitiveHeaders();
 
     public RestClientOptions() {
         globalHeaders = new CaseInsensitiveHeaders();
@@ -51,6 +55,7 @@ public class RestClientOptions extends HttpClientOptions {
 
     public RestClientOptions(final RestClientOptions other) {
         super(other);
+        globalRequestCacheOptions = other.globalRequestCacheOptions;
         globalHeaders = new CaseInsensitiveHeaders().addAll(other.getGlobalHeaders());
         globalRequestTimeoutInMillis = other.getGlobalRequestTimeoutInMillis();
 
@@ -58,8 +63,36 @@ public class RestClientOptions extends HttpClientOptions {
 
     public RestClientOptions(final JsonObject json) {
         super(json);
+        final JsonObject jsonObjectGlobalRequestCacheOptions = json.getJsonObject("globalRequestCacheOptions");
+        if (jsonObjectGlobalRequestCacheOptions != null) {
+            final RequestCacheOptions requestCacheOptions = new RequestCacheOptions();
+            final Integer ttlInMillis = jsonObjectGlobalRequestCacheOptions.getInteger("ttlInMillis");
+            final Boolean evictBefore = jsonObjectGlobalRequestCacheOptions.getBoolean("evictBefore");
+            if (jsonObjectGlobalRequestCacheOptions.getJsonArray("cachedStatusCodes") != null) {
+                final Set<Integer> cachedStatusCodes = jsonObjectGlobalRequestCacheOptions.getJsonArray("cachedStatusCodes")
+                        .stream()
+                        .map(e -> (Integer) e)
+                        .collect(Collectors.toSet());
+                requestCacheOptions.withCachedStatusCodes(cachedStatusCodes);
+            }
+
+            if (ttlInMillis != null) {
+                requestCacheOptions.withTtlInMillis(ttlInMillis);
+            }
+            if (evictBefore != null) {
+                requestCacheOptions.withEvictBefore(evictBefore);
+            }
+            globalRequestCacheOptions = Optional.of(requestCacheOptions);
+        }
         globalHeaders = new CaseInsensitiveHeaders();
         globalRequestTimeoutInMillis = json.getInteger("globalRequestTimeoutInMillis", DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS);
+    }
+
+    /**
+     * @return The request timeout in milliseconds
+     */
+    public int getGlobalRequestTimeoutInMillis() {
+        return globalRequestTimeoutInMillis;
     }
 
     /**
@@ -69,6 +102,8 @@ public class RestClientOptions extends HttpClientOptions {
      * @return a reference to this so multiple method calls can be chained together
      */
     public RestClientOptions setGlobalRequestTimeout(int requestTimeoutInMillis) {
+        checkArgument(requestTimeoutInMillis > 0, "ttlInMillis must be greater then 0");
+
         this.globalRequestTimeoutInMillis = requestTimeoutInMillis;
         return this;
     }
@@ -92,7 +127,7 @@ public class RestClientOptions extends HttpClientOptions {
      * Add a global header which will be appended to every HTTP request.
      * The headers defined per request will override this headers.
      *
-     * @param name The name of the header
+     * @param name  The name of the header
      * @param value The value of the header
      * @return a reference to this so multiple method calls can be chained together
      */
@@ -106,11 +141,22 @@ public class RestClientOptions extends HttpClientOptions {
     }
 
     /**
+     * Sets the cache config and enables it for all request. Default is Optional.empty().
+     * It can be overridden on the request level.
+     * 
+     * The cache key is generated from the url, the headers and the request body.
      *
-     * @return The request timeout in milliseconds
+     * @param requestCacheOptions The request cache config
+     * @return a reference to this so multiple method calls can be chained together
      */
-    public int getGlobalRequestTimeoutInMillis() {
-        return globalRequestTimeoutInMillis;
+    public RestClientOptions setGlobalRequestCacheOptions(Optional<RequestCacheOptions> requestCacheOptions) {
+        checkNotNull(requestCacheOptions, "requestCacheOptions must not be null");
+        globalRequestCacheOptions = requestCacheOptions;
+        return this;
+    }
+
+    public Optional<RequestCacheOptions> getGlobalRequestCacheOptions() {
+        return globalRequestCacheOptions;
     }
 
     @Override

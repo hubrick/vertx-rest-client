@@ -19,9 +19,11 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.cache.Cache;
 import com.google.common.collect.FluentIterable;
 import com.google.common.io.BaseEncoding;
 import com.hubrick.vertx.rest.MediaType;
+import com.hubrick.vertx.rest.RequestCacheOptions;
 import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
@@ -31,21 +33,25 @@ import com.hubrick.vertx.rest.exception.RestClientException;
 import com.hubrick.vertx.rest.message.BufferedHttpOutputMessage;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
+import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
+import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -61,24 +67,32 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultRestClientRequest.class);
 
+    private final Vertx vertx;
     private final HttpClient httpClient;
+    private final HttpMethod method;
     private final BufferedHttpOutputMessage bufferedHttpOutputMessage = new BufferedHttpOutputMessage();
     private final List<HttpMessageConverter> httpMessageConverters;
     private final HttpClientRequest httpClientRequest;
     private final MultiMap globalHeaders;
+    private final Handler<RestClientResponse<T>> responseHandler;
+    private final Cache<MultiKey, RestClientResponse> requestCache;
     private Handler<Throwable> exceptionHandler;
 
+    private Optional<RequestCacheOptions> requestCacheOptions;
     private boolean headersCopied = false;
     private boolean globalHeadersPopulated = false;
     private String uri;
 
-    public DefaultRestClientRequest(HttpClient httpClient,
+    public DefaultRestClientRequest(Vertx vertx,
+                                    HttpClient httpClient,
                                     List<HttpMessageConverter> httpMessageConverters,
                                     HttpMethod method,
                                     String uri,
                                     Class<T> responseClass,
                                     Handler<RestClientResponse<T>> responseHandler,
+                                    Cache<MultiKey, RestClientResponse> requestCache,
                                     int timeoutInMillis,
+                                    Optional<RequestCacheOptions> requestCacheOptions,
                                     MultiMap globalHeaders,
                                     @Nullable Handler<Throwable> exceptionHandler) {
         checkNotNull(httpClient, "httpClient must not be null");
@@ -86,9 +100,13 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         checkArgument(!httpMessageConverters.isEmpty(), "dataMappers must not be empty");
         checkNotNull(globalHeaders, "globalHeaders must not be null");
 
+        this.vertx = vertx;
         this.httpClient = httpClient;
+        this.method = method;
         this.uri = uri;
         this.httpMessageConverters = httpMessageConverters;
+        this.responseHandler = responseHandler;
+        this.requestCache = requestCache;
         this.globalHeaders = globalHeaders;
 
         httpClientRequest = httpClient.request(method, uri, (HttpClientResponse httpClientResponse) -> {
@@ -98,6 +116,8 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         if (timeoutInMillis > 0) {
             httpClientRequest.setTimeout(timeoutInMillis);
         }
+
+        this.requestCacheOptions = requestCacheOptions;
 
         if (exceptionHandler != null) {
             exceptionHandler(exceptionHandler);
@@ -111,7 +131,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 httpClientResponse.exceptionHandler(null);
                 if (log.isWarnEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                    log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
 
                 RuntimeException exception = null;
@@ -134,7 +154,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 httpClientResponse.exceptionHandler(null);
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri,httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                    log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
 
                 try {
@@ -146,6 +166,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                             exceptionHandler
                     );
 
+                    cache(restClientResponse, uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
                     handler.handle(restClientResponse);
                 } catch (Throwable t) {
                     log.error("Failed invoking rest handler", t);
@@ -161,7 +182,8 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public RestClientRequest setChunked(boolean chunked) {
-        httpClientRequest.setChunked(true);
+        // Ignore this for now since chunked mode is not supported
+        //httpClientRequest.setChunked(true);
         return this;
     }
 
@@ -248,6 +270,12 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     }
 
     @Override
+    public RestClientRequest<T> withRequestCache(Optional<RequestCacheOptions> requestCacheOptions) {
+        this.requestCacheOptions = requestCacheOptions;
+        return this;
+    }
+
+    @Override
     public void setAcceptHeader(List<MediaType> mediaTypes) {
         bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.ACCEPT, formatForAcceptHeader(mediaTypes));
     }
@@ -293,12 +321,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         try {
             if (requestObject == null) {
                 if (endRequest) {
-                    if (!httpClientRequest.isChunked() && Strings.isNullOrEmpty(bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_LENGTH))) {
-                        bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, "0");
-                    }
-
-                    copyHeadersToHttpClientRequest();
-                    httpClientRequest.end();
+                    endRequest();
                 }
             } else {
                 final Class<?> requestType = requestObject.getClass();
@@ -309,9 +332,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                         httpMessageConverter.write(requestObject, requestContentType, bufferedHttpOutputMessage);
 
                         if (endRequest) {
-                            copyHeadersToHttpClientRequest();
-                            httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
-                            logRequest();
+                            endRequest();
                         }
                         return;
                     }
@@ -352,9 +373,69 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         }
     }
 
+    private MultiKey createCacheKey(String uri, MultiMap headers, byte[] body) {
+        return new MultiKey(
+                uri,
+                headers.entries().stream().map(e -> e.getKey() + ": " + e.getValue()).sorted().collect(Collectors.toList()),
+                Arrays.hashCode(body)
+        );
+    }
+
+    private void cache(RestClientResponse restClientResponse, String uri, MultiMap headers, byte[] body) {
+        final MultiKey key = createCacheKey(uri, headers, body);
+        if (requestCacheOptions.isPresent() && requestCacheOptions.get().getEvictBefore()) {
+            requestCache.invalidate(key);
+        }
+
+        if (HttpMethod.GET.equals(method) && requestCacheOptions.isPresent() && requestCacheOptions.get().getCachedStatusCodes().contains(restClientResponse.statusCode())) {
+            log.debug("Caching entry with key {}", key);
+            requestCache.put(key, restClientResponse);
+            vertx.setTimer(requestCacheOptions.get().getTtlInMillis(), timerId -> {
+                log.debug("EVICTING entry from cache for key {}", key);
+                requestCache.invalidate(key);
+            });
+        }
+    }
+
+    private void endRequest() {
+        copyHeadersToHttpClientRequest();
+        writeContentLength();
+
+        if (HttpMethod.GET.equals(method) && requestCacheOptions.isPresent()) {
+            try {
+                final MultiKey key = createCacheKey(uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
+                final RestClientResponse cachedRestClientResponse = requestCache.getIfPresent(key);
+                if (cachedRestClientResponse != null) {
+                    log.debug("Cache HIT. Retrieving entry from cache for key {}", key);
+                    responseHandler.handle(cachedRestClientResponse);
+                } else {
+                    log.debug("Cache MISS. Proceeding with request for key {}", key);
+                    httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
+                    logRequest();
+                }
+            } catch (Throwable t) {
+                log.error("Failed invoking rest handler", t);
+                if (exceptionHandler != null) {
+                    exceptionHandler.handle(t);
+                } else {
+                    throw t;
+                }
+            }
+        } else {
+            httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
+            logRequest();
+        }
+    }
+
+    private void writeContentLength() {
+        if (!httpClientRequest.isChunked() && Strings.isNullOrEmpty(bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_LENGTH))) {
+            bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bufferedHttpOutputMessage.getBody().length));
+        }
+    }
+
     private void copyHeadersToHttpClientRequest() {
         populateGlobalHeaders();
-        if(!headersCopied) {
+        if (!headersCopied) {
             for (Map.Entry<String, String> header : bufferedHttpOutputMessage.getHeaders()) {
                 httpClientRequest.putHeader(header.getKey(), header.getValue());
             }
@@ -363,7 +444,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     }
 
     private void populateGlobalHeaders() {
-        if(!globalHeadersPopulated) {
+        if (!globalHeadersPopulated) {
             for (Map.Entry<String, String> header : globalHeaders) {
                 httpClientRequest.putHeader(header.getKey(), header.getValue());
             }

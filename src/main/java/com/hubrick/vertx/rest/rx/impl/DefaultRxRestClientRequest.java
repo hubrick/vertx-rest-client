@@ -16,11 +16,13 @@
 package com.hubrick.vertx.rest.rx.impl;
 
 import com.hubrick.vertx.rest.MediaType;
+import com.hubrick.vertx.rest.RequestCacheOptions;
 import com.hubrick.vertx.rest.RestClientRequest;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author Emir Dizdarevic
@@ -112,6 +114,11 @@ public class DefaultRxRestClientRequest<T> implements RestClientRequest<T> {
     @Override
     public MediaType getContentType() {
         return decorated.getContentType();
+    }
+
+    @Override
+    public RestClientRequest<T> withRequestCache(Optional<RequestCacheOptions> requestCacheOptions) {
+        return decorated.withRequestCache(requestCacheOptions);
     }
 
     @Override
