@@ -47,7 +47,6 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -388,23 +387,17 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null && requestCacheOptions.getCachedStatusCodes().contains(restClientResponse.statusCode())) {
             log.debug("Caching entry with key {}", key);
 
-            cancelTimerAndInvalidateTimerCache(key);
+            evictionTimersCache.remove(key);
             requestCache.put(key, restClientResponse);
 
             final long timerId = vertx.setTimer(requestCacheOptions.getTtlInMillis(), timerIdRef -> {
-                log.debug("EVICTING entry from cache for key {}", key);
-                requestCache.remove(key);
-                evictionTimersCache.remove(key);
+                if(evictionTimersCache.containsValue(timerIdRef)) {
+                    log.debug("EVICTING entry from cache for key {}", key);
+                    requestCache.remove(key);
+                    evictionTimersCache.remove(key);
+                }
             });
             evictionTimersCache.put(key, timerId);
-        }
-    }
-
-    private void cancelTimerAndInvalidateTimerCache(MultiKey key) {
-        final Long previousTimeId = evictionTimersCache.get(key);
-        if(previousTimeId != null) {
-            vertx.cancelTimer(previousTimeId);
-            evictionTimersCache.remove(key);
         }
     }
 
@@ -412,7 +405,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         if (requestCacheOptions != null && requestCacheOptions.getEvictBefore()) {
             log.debug("EVICTING entry from cache for key {}", key);
             requestCache.remove(key);
-            cancelTimerAndInvalidateTimerCache(key);
+            evictionTimersCache.remove(key);
         }
     }
 
@@ -420,13 +413,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         if(requestCacheOptions != null && requestCacheOptions.getEvictAllBefore()) {
             log.debug("EVICTING all entries from cache");
             requestCache.clear();
-
-            final Iterator<Map.Entry<MultiKey, Long>> entries = evictionTimersCache.entrySet().iterator();
-            while (entries.hasNext()) {
-                final Map.Entry<MultiKey, Long> entry = entries.next();
-                vertx.cancelTimer(entry.getValue());
-                entries.remove();
-            }
+            evictionTimersCache.clear();
         }
     }
 
