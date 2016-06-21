@@ -19,27 +19,33 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.hubrick.vertx.rest.AbstractFunctionalTest;
-import com.hubrick.vertx.rest.RestClient;
+import com.hubrick.vertx.rest.RequestCacheOptions;
 import com.hubrick.vertx.rest.RestClientOptions;
 import com.hubrick.vertx.rest.RestClientResponse;
+import com.hubrick.vertx.rest.VertxMatcherAssert;
 import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
-import com.hubrick.vertx.rest.impl.DefaultRestClient;
-import com.hubrick.vertx.rest.rx.impl.DefaultRxRestClient;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockserver.model.Header;
+import org.mockserver.model.HttpRequest;
 import rx.Observable;
+import rx.functions.Func0;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 import static com.google.common.io.Resources.getResource;
 import static com.google.common.io.Resources.toByteArray;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.isIn;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
@@ -49,8 +55,29 @@ import static org.mockserver.model.HttpResponse.response;
  */
 public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
+    private RxRestClient rxRestClient;
+
+    @Before
+    public void setUp() throws Exception {
+        final RestClientOptions clientOptions = new RestClientOptions();
+        clientOptions.setDefaultHost("localhost");
+        clientOptions.setDefaultPort(MOCKSERVER_PORT);
+        clientOptions.setMaxPoolSize(10);
+
+        rxRestClient = RxRestClient.create(
+                vertx,
+                clientOptions,
+                ImmutableList.of(
+                        new FormHttpMessageConverter(),
+                        new StringHttpMessageConverter(),
+                        new JacksonJsonHttpMessageConverter(new ObjectMapper())
+                )
+        );
+
+    }
+
     @Test
-    public void testSimpleGETRequest(TestContext testContext) throws Exception {
+    public void testSimpleRxFlow(TestContext testContext) throws Exception {
         getMockServerClient().when(
                 request()
                         .withMethod("GET")
@@ -89,7 +116,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         clientOptions.setDefaultPort(MOCKSERVER_PORT);
         clientOptions.setMaxPoolSize(10);
 
-        final RestClient restClient = new DefaultRestClient(
+        final RxRestClient rxRestClient = RxRestClient.create(
                 vertx,
                 clientOptions,
                 ImmutableList.of(
@@ -100,8 +127,6 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         );
 
         final Async async = testContext.async();
-
-        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
         final Observable<RestClientResponse<UserSearchResponse[]>> response = rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, restClientRequest -> restClientRequest.end());
         response.flatMap(userSearchResponseRestClientResponse -> {
             final List<Observable<RestClientResponse<UserResponse>>> responses = new LinkedList<>();
@@ -111,12 +136,76 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
             }
 
             return Observable.merge(responses);
-        }).finallyDo(async::complete).forEach(userResponseRestClientResponse -> {
-            final Set<UUID> ids = Sets.newHashSet(UUID.fromString("b9d8fb1a-38c5-45ea-a7ee-6450a964f4f8"), UUID.fromString("e5297618-c299-4157-a85c-4957c8204819"));
-            final UUID id = userResponseRestClientResponse.getBody().getId();
-            testContext.assertTrue(ids.contains(id), ids + " should contain " + id);
-        });
+        }).subscribe(
+                userResponseRestClientResponse -> {
+                    final Set<UUID> ids = Sets.newHashSet(UUID.fromString("b9d8fb1a-38c5-45ea-a7ee-6450a964f4f8"), UUID.fromString("e5297618-c299-4157-a85c-4957c8204819"));
+                    final UUID id = userResponseRestClientResponse.getBody().getId();
+                    VertxMatcherAssert.assertThat(testContext, id, isIn(ids));
+                },
+                testContext::fail,
+                () -> async.complete()
+        );
+    }
 
+    @Test
+    public void testRequestWithCache(TestContext testContext) throws Exception {
+        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(10000)), 1);
+    }
+
+    @Test
+    public void testRequestWithoutCache(TestContext testContext) throws Exception {
+        testRequestCache(testContext, Optional.empty(), 3);
+    }
+
+    @Test
+    public void testRequestWithCacheEvicted(TestContext testContext) throws Exception {
+        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 1);
+
+        // Wait until evicted
+        Thread.sleep(5000);
+
+        getMockServerClient().reset();
+        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 1);
+    }
+
+    @Test
+    public void testRequestWithCacheNotEviction(TestContext testContext) throws Exception {
+        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 1);
+
+        Thread.sleep(1000);
+
+        getMockServerClient().reset();
+        testRequestCache(testContext, Optional.of(new RequestCacheOptions().withTtlInMillis(4000)), 0);
+    }
+
+    private void testRequestCache(TestContext testContext, Optional<RequestCacheOptions> requestCacheOptions, int timesCalled) throws Exception {
+
+        final HttpRequest httpRequest = request().withMethod("GET").withPath("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819");
+        getMockServerClient().when(
+                httpRequest
+        ).respond(
+                response()
+                        .withStatusCode(200)
+                        .withHeader(Header.header("Content-Type", "application/json;charset=UTF-8"))
+                        .withBody(toByteArray(getResource(RxRestClientIntegrationTest.class, "userResponse1.json")))
+        );
+
+        final Async async = testContext.async();
+        final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.withRequestCache(requestCacheOptions).end())
+                .map(userResponseRestClientResponse -> userResponseRestClientResponse.getBody());
+
+        Observable.defer(request)
+                .flatMap(userResponse -> Observable.merge(Observable.defer(request), Observable.defer(request)))
+                .subscribe(
+                        aVoid -> {
+                            // Do nothing
+                        },
+                        testContext::fail,
+                        () -> {
+                            VertxMatcherAssert.assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
+                            async.complete();
+                        }
+                );
     }
 
 }

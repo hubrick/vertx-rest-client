@@ -1,7 +1,9 @@
+*~
 .idea/
 *.iml
 *.ipr
 *.iws
+*.log
 .classpath
 .project
 .settings/

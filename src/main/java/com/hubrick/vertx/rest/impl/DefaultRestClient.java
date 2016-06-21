@@ -15,23 +15,22 @@
  */
 package com.hubrick.vertx.rest.impl;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientOptions;
 import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import io.vertx.core.Handler;
-import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.CaseInsensitiveHeaders;
 import io.vertx.core.http.HttpClient;
-import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
+import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * The default implementation.
@@ -43,18 +42,24 @@ public class DefaultRestClient implements RestClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultRestClient.class);
 
+    private final Cache<MultiKey, RestClientResponse> requestCache = CacheBuilder
+            .newBuilder()
+            .concurrencyLevel(1)
+            .recordStats()
+            .build();
+
+    private final Vertx vertx;
     private final HttpClient httpClient;
     private final List<HttpMessageConverter> httpMessageConverters;
     private final RestClientOptions options;
     private Handler<Throwable> exceptionHandler;
 
     public DefaultRestClient(Vertx vertx, List<HttpMessageConverter> httpMessageConverters) {
-        this.options = new RestClientOptions();
-        this.httpMessageConverters = httpMessageConverters;
-        this.httpClient = vertx.createHttpClient();
+        this(vertx, new RestClientOptions(), httpMessageConverters);
     }
 
     public DefaultRestClient(Vertx vertx, final RestClientOptions clientOptions, List<HttpMessageConverter> httpMessageConverters) {
+        this.vertx = vertx;
         this.httpMessageConverters = httpMessageConverters;
         this.httpClient = vertx.createHttpClient(clientOptions);
         this.options = new RestClientOptions(clientOptions);
@@ -128,13 +133,16 @@ public class DefaultRestClient implements RestClient {
 
     private <T> DefaultRestClientRequest<T> handleRequest(HttpMethod method, String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
         return new DefaultRestClientRequest(
+                vertx,
                 httpClient,
                 httpMessageConverters,
                 method,
                 uri,
                 responseClass,
                 responseHandler,
+                requestCache,
                 options.getGlobalRequestTimeoutInMillis(),
+                options.getGlobalRequestCacheOptions(),
                 options.getGlobalHeaders(),
                 exceptionHandler
         );
