@@ -37,10 +37,10 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class RestClientOptions extends HttpClientOptions {
 
-    private static final int DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS = 0;
+    private static final long DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS = 0;
 
     private RequestCacheOptions globalRequestCacheOptions;
-    private int globalRequestTimeoutInMillis = DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS;
+    private long globalRequestTimeoutInMillis = DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS;
     private MultiMap globalHeaders = new CaseInsensitiveHeaders();
 
     public RestClientOptions() {
@@ -83,24 +83,26 @@ public class RestClientOptions extends HttpClientOptions {
             globalRequestCacheOptions = requestCacheOptions;
         }
         globalHeaders = new CaseInsensitiveHeaders();
-        globalRequestTimeoutInMillis = json.getInteger("globalRequestTimeoutInMillis", DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS);
+        globalRequestTimeoutInMillis = json.getLong("globalRequestTimeoutInMillis", DEFAULT_GLOBAL_REQUEST_TIMEOUT_IN_MILLIS);
     }
 
     /**
      * @return The request timeout in milliseconds
      */
-    public int getGlobalRequestTimeoutInMillis() {
+    public long getGlobalRequestTimeoutInMillis() {
         return globalRequestTimeoutInMillis;
     }
 
     /**
-     * Set the request timeout in milliseconds which will be used for every request. It can be overridden on Request level.
+     * Set the request timeout in milliseconds which will be used for every request.
+     * If timeout set to 0 the timeout will be infinite.
+     * It can be overridden on Request level.
      *
      * @param requestTimeoutInMillis The global request timeout in millis.
      * @return a reference to this so multiple method calls can be chained together
      */
-    public RestClientOptions setGlobalRequestTimeout(int requestTimeoutInMillis) {
-        checkArgument(requestTimeoutInMillis > 0, "ttlInMillis must be greater then 0");
+    public RestClientOptions setGlobalRequestTimeout(long requestTimeoutInMillis) {
+        checkArgument(requestTimeoutInMillis >= 0, "ttlInMillis must be greater or equal to 0");
 
         this.globalRequestTimeoutInMillis = requestTimeoutInMillis;
         return this;

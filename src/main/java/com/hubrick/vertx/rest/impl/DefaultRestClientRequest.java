@@ -68,6 +68,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private final Vertx vertx;
     private final HttpClient httpClient;
     private final HttpMethod method;
+    private final String uri;
     private final BufferedHttpOutputMessage bufferedHttpOutputMessage = new BufferedHttpOutputMessage();
     private final List<HttpMessageConverter> httpMessageConverters;
     private final HttpClientRequest httpClientRequest;
@@ -78,9 +79,11 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private Handler<Throwable> exceptionHandler;
 
     private RequestCacheOptions requestCacheOptions;
+    private Long timeoutInMillis;
+
+    // Status variables
     private boolean headersCopied = false;
     private boolean globalHeadersPopulated = false;
-    private String uri;
 
     public DefaultRestClientRequest(Vertx vertx,
                                     HttpClient httpClient,
@@ -91,7 +94,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                                     Handler<RestClientResponse<T>> responseHandler,
                                     Map<MultiKey, RestClientResponse> requestCache,
                                     Map<MultiKey, Long> evictionTimersCache,
-                                    int timeoutInMillis,
+                                    Long timeoutInMillis,
                                     RequestCacheOptions requestCacheOptions,
                                     MultiMap globalHeaders,
                                     @Nullable Handler<Throwable> exceptionHandler) {
@@ -114,11 +117,8 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             handleResponse(httpClientResponse, responseClass, responseHandler);
         });
 
-        if (timeoutInMillis > 0) {
-            httpClientRequest.setTimeout(timeoutInMillis);
-        }
-
         this.requestCacheOptions = requestCacheOptions;
+        this.timeoutInMillis = timeoutInMillis;
 
         if (exceptionHandler != null) {
             exceptionHandler(exceptionHandler);
@@ -256,7 +256,9 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     @Override
     public RestClientRequest setTimeout(long timeoutMs) {
-        httpClientRequest.setTimeout(timeoutMs);
+        checkArgument(timeoutMs >= 0, "timeoutMs must be greater or equal to 0");
+
+        this.timeoutInMillis = timeoutMs;
         return this;
     }
 
@@ -387,7 +389,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null && requestCacheOptions.getCachedStatusCodes().contains(restClientResponse.statusCode())) {
             log.debug("Caching entry with key {}", key);
 
-            evictionTimersCache.remove(key);
+            cancelOutstandingEvictionTimer(key);
             requestCache.put(key, restClientResponse);
 
             final long timerId = vertx.setTimer(requestCacheOptions.getTtlInMillis(), timerIdRef -> {
@@ -404,6 +406,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private void evictBefore(MultiKey key) {
         if (requestCacheOptions != null && requestCacheOptions.getEvictBefore()) {
             log.debug("EVICTING entry from cache for key {}", key);
+            cancelOutstandingEvictionTimer(key);
             requestCache.remove(key);
             evictionTimersCache.remove(key);
         }
@@ -414,6 +417,13 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             log.debug("EVICTING all entries from cache");
             requestCache.clear();
             evictionTimersCache.clear();
+        }
+    }
+
+    private void cancelOutstandingEvictionTimer(MultiKey multiKey) {
+        final Long outstandingTimer = evictionTimersCache.get(multiKey);
+        if(outstandingTimer != null) {
+            vertx.cancelTimer(outstandingTimer);
         }
     }
 
@@ -433,8 +443,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                     responseHandler.handle(cachedRestClientResponse);
                 } else {
                     log.debug("Cache MISS. Proceeding with request for key {}", key);
-                    httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
-                    logRequest();
+                    writeBody();
                 }
             } catch (Throwable t) {
                 log.error("Failed invoking rest handler", t);
@@ -445,9 +454,16 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 }
             }
         } else {
-            httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
-            logRequest();
+            writeBody();
         }
+    }
+
+    private void writeBody() {
+        if(timeoutInMillis > 0) {
+            httpClientRequest.setTimeout(timeoutInMillis);
+        }
+        httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
+        logRequest();
     }
 
     private void writeContentLength() {
