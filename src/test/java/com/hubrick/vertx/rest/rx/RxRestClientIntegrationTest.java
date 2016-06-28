@@ -148,7 +148,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
     public void testRequestWithCache(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(10000), 1);
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000), 1);
     }
 
     @Test
@@ -158,28 +158,49 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
     public void testRequestWithCacheEvictAll(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(10000).withEvictAllBefore(true), 3);
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000).withEvictAllBefore(true), 3);
     }
 
     @Test
     public void testRequestWithCacheEvicted(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 1);
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
 
         // Wait until evicted
         Thread.sleep(5000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 1);
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
     }
 
     @Test
-    public void testRequestWithCacheNotEviction(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 1);
+    public void testRequestWithCacheNotEvicted(TestContext testContext) throws Exception {
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
 
         Thread.sleep(1000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, new RequestCacheOptions().withTtlInMillis(4000), 0);
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 0);
+    }
+
+    @Test
+    public void testRequestWithCacheEvictedWithExpiresAfterOnAccess(TestContext testContext) throws Exception {
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000).withExpiresAfterAccessMillis(500), 1);
+
+        // Wait until evicted
+        Thread.sleep(1000);
+
+        getMockServerClient().reset();
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
+    }
+
+    @Test
+    public void testRequestWithCacheNotEvictedWithExpiresAfterOnAccess(TestContext testContext) throws Exception {
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000).withExpiresAfterAccessMillis(2000), 1);
+
+        Thread.sleep(1000);
+
+        getMockServerClient().reset();
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 0);
     }
 
     private void testRequestCache(TestContext testContext, RequestCacheOptions requestCacheOptions, int timesCalled) throws Exception {
