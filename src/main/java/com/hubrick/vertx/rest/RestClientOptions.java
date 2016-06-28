@@ -75,7 +75,7 @@ public class RestClientOptions extends HttpClientOptions {
             }
 
             if (ttlInMillis != null) {
-                requestCacheOptions.withTtlInMillis(ttlInMillis);
+                requestCacheOptions.withExpiresAfterWriteMillis(ttlInMillis);
             }
             if (evictBefore != null) {
                 requestCacheOptions.withEvictBefore(evictBefore);

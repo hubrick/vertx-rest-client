@@ -391,15 +391,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
             cancelOutstandingEvictionTimer(key);
             requestCache.put(key, restClientResponse);
-
-            final long timerId = vertx.setTimer(requestCacheOptions.getTtlInMillis(), timerIdRef -> {
-                if(evictionTimersCache.containsValue(timerIdRef)) {
-                    log.debug("EVICTING entry from cache for key {}", key);
-                    requestCache.remove(key);
-                    evictionTimersCache.remove(key);
-                }
-            });
-            evictionTimersCache.put(key, timerId);
+            createEvictionTimer(key, requestCacheOptions.getExpiresAfterWriteMillis());
         }
     }
 
@@ -408,7 +400,6 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             log.debug("EVICTING entry from cache for key {}", key);
             cancelOutstandingEvictionTimer(key);
             requestCache.remove(key);
-            evictionTimersCache.remove(key);
         }
     }
 
@@ -424,7 +415,19 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         final Long outstandingTimer = evictionTimersCache.get(multiKey);
         if(outstandingTimer != null) {
             vertx.cancelTimer(outstandingTimer);
+            evictionTimersCache.remove(multiKey);
         }
+    }
+
+    private void createEvictionTimer(MultiKey key, long ttl) {
+        final long timerId = vertx.setTimer(ttl, timerIdRef -> {
+            if(evictionTimersCache.containsValue(timerIdRef)) {
+                log.debug("EVICTING entry from cache for key {}", key);
+                requestCache.remove(key);
+                evictionTimersCache.remove(key);
+            }
+        });
+        evictionTimersCache.put(key, timerId);
     }
 
     private void endRequest() {
@@ -440,6 +443,10 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 final RestClientResponse cachedRestClientResponse = requestCache.get(key);
                 if (cachedRestClientResponse != null) {
                     log.debug("Cache HIT. Retrieving entry from cache for key {}", key);
+                    if(requestCacheOptions.getExpiresAfterAccessMillis() > 0) {
+                        cancelOutstandingEvictionTimer(key);
+                        createEvictionTimer(key, requestCacheOptions.getExpiresAfterAccessMillis());
+                    }
                     responseHandler.handle(cachedRestClientResponse);
                 } else {
                     log.debug("Cache MISS. Proceeding with request for key {}", key);

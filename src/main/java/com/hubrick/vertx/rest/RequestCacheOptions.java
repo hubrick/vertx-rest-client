@@ -27,31 +27,34 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class RequestCacheOptions {
 
-    private static final int DEFAULT_REQUEST_CACHE_TTL_IN_MILLIS = 3000;
+    private static final int DEFAULT_EXPIRES_AFTER_WRITE_IN_MILLIS = 2000;
     private static final boolean DEFAULT_EVICT_BEFORE = false;
     private static final boolean DEFAULT_EVICT_ALL_BEFORE = false;
+    private static final int EXPIRES_AFTER_ACCESS_IN_MILLIS = 0;
     private static final Set<Integer> DEFAULT_CACHED_STATUS_CODES = Collections.singleton(200);
 
-    private int ttlInMillis = DEFAULT_REQUEST_CACHE_TTL_IN_MILLIS;
+    private int expiresAfterWriteMillis = DEFAULT_EXPIRES_AFTER_WRITE_IN_MILLIS;
     private boolean evictBefore = DEFAULT_EVICT_BEFORE;
     private boolean evictAllBefore = DEFAULT_EVICT_ALL_BEFORE;
+    private int expiresAfterAccessMillis = EXPIRES_AFTER_ACCESS_IN_MILLIS;
     private Set<Integer> cachedStatusCodes = DEFAULT_CACHED_STATUS_CODES;
 
     /**
-     * Sets the time to live for the request cache entries. Default is 3000 millis.
+     * Sets the time to live after write for the request cache entries. This is the initial time to live.
+     * If accessed entries ttl stays the same and doesn't get reset. Default is 0 millis which means it's disabled.
      * This will only work with GET
      *
-     * @param ttlInMillis The quantity of time in milliseconds.
+     * @param expiresAfterWriteMillis The quantity of time in milliseconds.
      * @return A reference to this, so multiple method calls can be chained.
      */
-    public RequestCacheOptions withTtlInMillis(int ttlInMillis) {
-        checkArgument(ttlInMillis > 0, "ttlInMillis must be greater then 0");
-        this.ttlInMillis = ttlInMillis;
+    public RequestCacheOptions withExpiresAfterWriteMillis(int expiresAfterWriteMillis) {
+        checkArgument(expiresAfterWriteMillis >= 0, "expiresAfterWriteMillis must be greater or equal to 0");
+        this.expiresAfterWriteMillis = expiresAfterWriteMillis;
         return this;
     }
 
-    public int getTtlInMillis() {
-        return ttlInMillis;
+    public int getExpiresAfterWriteMillis() {
+        return expiresAfterWriteMillis;
     }
 
     /**
@@ -71,6 +74,24 @@ public class RequestCacheOptions {
     }
 
     /**
+     * Sets the time to live for the request cache entries on every access of the entry.
+     * If accessed ttl is reset to to expiresAfterAccessMillis. Default is 1000 millis.
+     * This will only work with GET
+     *
+     * @param expiresAfterAccessMillis If set to true the whole cache will be evicted
+     * @return A reference to this, so multiple method calls can be chained.
+     */
+    public RequestCacheOptions withExpiresAfterAccessMillis(int expiresAfterAccessMillis) {
+        checkArgument(expiresAfterAccessMillis >= 0, "expiresAfterAccessMillis must be greater or equal to 0");
+        this.expiresAfterAccessMillis = expiresAfterAccessMillis;
+        return this;
+    }
+
+    public int getExpiresAfterAccessMillis() {
+        return expiresAfterAccessMillis;
+    }
+
+    /**
      * If an eviction for the whole cache should happen before fetching.
      * This will work with GET, POST, PUT, DELETE
      *
@@ -85,6 +106,8 @@ public class RequestCacheOptions {
     public boolean getEvictAllBefore() {
         return evictAllBefore;
     }
+
+
 
     /**
      * Defines the status codes which will be cached. Default is 200 only.
