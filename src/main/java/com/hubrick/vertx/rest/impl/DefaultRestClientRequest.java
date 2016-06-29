@@ -367,6 +367,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         evictBefore(cacheKey);
         evictAllBefore();
 
+        log.debug("Calling uri: {} {}", method, uri);
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
             try {
                 if (requestCacheOptions.getEvictBefore() || requestCacheOptions.getEvictAllBefore()) {

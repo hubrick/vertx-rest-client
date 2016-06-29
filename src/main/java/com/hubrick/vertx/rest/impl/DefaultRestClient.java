@@ -94,7 +94,6 @@ public class DefaultRestClient implements RestClient {
 
     @Override
     public <T> RestClientRequest<T> get(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
-        log.debug("Calling uri: {}", uri);
         return handleRequest(HttpMethod.GET, uri, responseClass, responseHandler);
     }
 
@@ -105,7 +104,6 @@ public class DefaultRestClient implements RestClient {
 
     @Override
     public <T> RestClientRequest<T> post(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
-        log.debug("Calling uri: {}", uri);
         return handleRequest(HttpMethod.POST, uri, responseClass, responseHandler);
     }
 
@@ -116,7 +114,6 @@ public class DefaultRestClient implements RestClient {
 
     @Override
     public <T> RestClientRequest<T> put(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
-        log.debug("Calling uri: {}", uri);
         return handleRequest(HttpMethod.PUT, uri, responseClass, responseHandler);
     }
 
@@ -127,7 +124,6 @@ public class DefaultRestClient implements RestClient {
 
     @Override
     public <T> RestClientRequest<T> delete(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
-        log.debug("Calling uri: {}", uri);
         return handleRequest(HttpMethod.DELETE, uri, responseClass, responseHandler);
     }
 
@@ -138,7 +134,6 @@ public class DefaultRestClient implements RestClient {
 
     @Override
     public <T> RestClientRequest<T> request(HttpMethod method, String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
-        log.debug("Calling uri: {}", uri);
         return handleRequest(method, uri, responseClass, responseHandler);
     }
 
