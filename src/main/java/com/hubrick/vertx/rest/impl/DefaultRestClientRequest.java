@@ -313,7 +313,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         log.debug("Calling uri: {} {}", method, uri);
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
             try {
-                if (requestCacheOptions.getEvictBefore() || requestCacheOptions.getEvictAllBefore()) {
+                if (isEvicting(requestCacheOptions)) {
                     log.debug("Cache MISS. Proceeding with request for key {}", cacheKey);
                     finishRequest(Optional.of(cacheKey));
                 } else {
@@ -454,7 +454,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         for (DefaultRestClientRequest<T> entry : restClient.getRunningRequests().get(cacheKey)) {
             if (entry == this) {
                 lastFiredRestClientRequest = true;
-            } else if (lastFiredRestClientRequest && (entry.requestCacheOptions.getEvictBefore() || entry.requestCacheOptions.getEvictAllBefore())) {
+            } else if (lastFiredRestClientRequest && isEvicting(entry.requestCacheOptions)) {
                 lastFiredRestClientRequest = false;
                 break;
             }
@@ -484,6 +484,10 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
             log.debug("HTTP Request: \n{}", stringBuilder.toString());
         }
+    }
+
+    private boolean isEvicting(RequestCacheOptions requestCacheOptions) {
+        return requestCacheOptions.getEvictBefore() || requestCacheOptions.getEvictAllBefore();
     }
 
     private MultiKey createCacheKey(String uri, MultiMap headers, byte[] body) {
