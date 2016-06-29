@@ -20,6 +20,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
+import com.google.common.collect.LinkedListMultimap;
 import com.google.common.io.BaseEncoding;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RequestCacheOptions;
@@ -47,9 +48,12 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -76,6 +80,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private final Handler<RestClientResponse<T>> responseHandler;
     private final Map<MultiKey, RestClientResponse> requestCache;
     private final Map<MultiKey, Long> evictionTimersCache;
+    private final LinkedListMultimap<MultiKey, DefaultRestClientRequest<T>> runningRequests;
     private Handler<Throwable> exceptionHandler;
 
     private RequestCacheOptions requestCacheOptions;
@@ -94,6 +99,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                                     Handler<RestClientResponse<T>> responseHandler,
                                     Map<MultiKey, RestClientResponse> requestCache,
                                     Map<MultiKey, Long> evictionTimersCache,
+                                    LinkedListMultimap<MultiKey, DefaultRestClientRequest<T>> runningRequests,
                                     Long timeoutInMillis,
                                     RequestCacheOptions requestCacheOptions,
                                     MultiMap globalHeaders,
@@ -102,6 +108,9 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         checkNotNull(httpMessageConverters, "dataMappers must not be null");
         checkArgument(!httpMessageConverters.isEmpty(), "dataMappers must not be empty");
         checkNotNull(globalHeaders, "globalHeaders must not be null");
+        checkNotNull(requestCache, "requestCache must not be null");
+        checkNotNull(evictionTimersCache, "evictionTimersCache must not be null");
+        checkNotNull(runningRequests, "runningRequests must not be null");
 
         this.vertx = vertx;
         this.httpClient = httpClient;
@@ -111,10 +120,11 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         this.responseHandler = responseHandler;
         this.requestCache = requestCache;
         this.evictionTimersCache = evictionTimersCache;
+        this.runningRequests = runningRequests;
         this.globalHeaders = globalHeaders;
 
         httpClientRequest = httpClient.request(method, uri, (HttpClientResponse httpClientResponse) -> {
-            handleResponse(httpClientResponse, responseClass, responseHandler);
+            handleResponse(httpClientResponse, responseClass);
         });
 
         this.requestCacheOptions = requestCacheOptions;
@@ -125,7 +135,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         }
     }
 
-    private void handleResponse(HttpClientResponse httpClientResponse, Class clazz, Handler<RestClientResponse<T>> handler) {
+    private void handleResponse(HttpClientResponse httpClientResponse, Class clazz) {
         final Integer firstStatusDigit = httpClientResponse.statusCode() / 100;
         if (firstStatusDigit == 4 || firstStatusDigit == 5) {
             httpClientResponse.bodyHandler((buffer) -> {
@@ -167,8 +177,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                             exceptionHandler
                     );
 
-                    cache(restClientResponse, uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
-                    handler.handle(restClientResponse);
+                    handleResponse(restClientResponse);
                 } catch (Throwable t) {
                     log.error("Failed invoking rest handler", t);
                     if (exceptionHandler != null) {
@@ -178,6 +187,37 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                     }
                 }
             });
+        }
+    }
+
+    private void handleResponse(RestClientResponse<T> restClientResponse) {
+        if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
+            final MultiKey key = createCacheKey(uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
+
+            boolean lastFiredRestClientRequest = false;
+            final Set<DefaultRestClientRequest<T>> restClientRequestsToHandle = new LinkedHashSet<>();
+            for (DefaultRestClientRequest<T> entry : runningRequests.get(key)) {
+                if(entry == this) {
+                    lastFiredRestClientRequest = true;
+                } else if(entry.requestCacheOptions.getEvictBefore() || entry.requestCacheOptions.getEvictAllBefore()) {
+                    lastFiredRestClientRequest = false;
+                }
+
+                if(lastFiredRestClientRequest) {
+                    restClientRequestsToHandle.add(entry);
+                }
+            }
+
+            if(lastFiredRestClientRequest) {
+                cache(restClientResponse, uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
+            }
+
+            for (DefaultRestClientRequest<T> entry : restClientRequestsToHandle) {
+                vertx.runOnContext(aVoid -> entry.responseHandler.handle(restClientResponse));
+            }
+            runningRequests.get(key).removeAll(restClientRequestsToHandle);
+        } else {
+            responseHandler.handle(restClientResponse);
         }
     }
 
@@ -386,6 +426,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     private void cache(RestClientResponse restClientResponse, String uri, MultiMap headers, byte[] body) {
         final MultiKey key = createCacheKey(uri, headers, body);
+
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null && requestCacheOptions.getCachedStatusCodes().contains(restClientResponse.statusCode())) {
             log.debug("Caching entry with key {}", key);
 
@@ -393,41 +434,6 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             requestCache.put(key, restClientResponse);
             createEvictionTimer(key, requestCacheOptions.getExpiresAfterWriteMillis());
         }
-    }
-
-    private void evictBefore(MultiKey key) {
-        if (requestCacheOptions != null && requestCacheOptions.getEvictBefore()) {
-            log.debug("EVICTING entry from cache for key {}", key);
-            cancelOutstandingEvictionTimer(key);
-            requestCache.remove(key);
-        }
-    }
-
-    private void evictAllBefore() {
-        if(requestCacheOptions != null && requestCacheOptions.getEvictAllBefore()) {
-            log.debug("EVICTING all entries from cache");
-            requestCache.clear();
-            evictionTimersCache.clear();
-        }
-    }
-
-    private void cancelOutstandingEvictionTimer(MultiKey multiKey) {
-        final Long outstandingTimer = evictionTimersCache.get(multiKey);
-        if(outstandingTimer != null) {
-            vertx.cancelTimer(outstandingTimer);
-            evictionTimersCache.remove(multiKey);
-        }
-    }
-
-    private void createEvictionTimer(MultiKey key, long ttl) {
-        final long timerId = vertx.setTimer(ttl, timerIdRef -> {
-            if(evictionTimersCache.containsValue(timerIdRef)) {
-                log.debug("EVICTING entry from cache for key {}", key);
-                requestCache.remove(key);
-                evictionTimersCache.remove(key);
-            }
-        });
-        evictionTimersCache.put(key, timerId);
     }
 
     private void endRequest() {
@@ -440,17 +446,22 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
             try {
-                final RestClientResponse cachedRestClientResponse = requestCache.get(key);
-                if (cachedRestClientResponse != null) {
-                    log.debug("Cache HIT. Retrieving entry from cache for key {}", key);
-                    if(requestCacheOptions.getExpiresAfterAccessMillis() > 0) {
-                        cancelOutstandingEvictionTimer(key);
-                        createEvictionTimer(key, requestCacheOptions.getExpiresAfterAccessMillis());
-                    }
-                    responseHandler.handle(cachedRestClientResponse);
-                } else {
+                if (requestCacheOptions.getEvictBefore() || requestCacheOptions.getEvictAllBefore()) {
                     log.debug("Cache MISS. Proceeding with request for key {}", key);
-                    writeBody();
+                    finishRequest(Optional.of(key));
+                } else {
+                    final RestClientResponse cachedRestClientResponse = requestCache.get(key);
+                    if (cachedRestClientResponse != null) {
+                        log.debug("Cache HIT. Retrieving entry from cache for key {}", key);
+                        resetExpires(key);
+                        responseHandler.handle(cachedRestClientResponse);
+                    } else if (runningRequests.containsKey(key) && !runningRequests.get(key).isEmpty()) {
+                        log.debug("Cache FUTURE HIT for key {}", key);
+                        runningRequests.put(key, this);
+                    } else {
+                        log.debug("Cache MISS. Proceeding with request for key {}", key);
+                        finishRequest(Optional.of(key));
+                    }
                 }
             } catch (Throwable t) {
                 log.error("Failed invoking rest handler", t);
@@ -461,15 +472,58 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 }
             }
         } else {
-            writeBody();
+            finishRequest(Optional.empty());
         }
     }
 
-    private void writeBody() {
-        if(timeoutInMillis > 0) {
+    private void evictBefore(MultiKey key) {
+        if (requestCacheOptions != null && requestCacheOptions.getEvictBefore()) {
+            log.debug("EVICTING entry from cache for key {}", key);
+            cancelOutstandingEvictionTimer(key);
+            requestCache.remove(key);
+        }
+    }
+
+    private void resetExpires(MultiKey key) {
+        if (requestCacheOptions.getExpiresAfterAccessMillis() > 0) {
+            cancelOutstandingEvictionTimer(key);
+            createEvictionTimer(key, requestCacheOptions.getExpiresAfterAccessMillis());
+        }
+    }
+
+    private void evictAllBefore() {
+        if (requestCacheOptions != null && requestCacheOptions.getEvictAllBefore()) {
+            log.debug("EVICTING all entries from cache");
+            requestCache.clear();
+            evictionTimersCache.clear();
+        }
+    }
+
+    private void cancelOutstandingEvictionTimer(MultiKey multiKey) {
+        final Long outstandingTimer = evictionTimersCache.get(multiKey);
+        if (outstandingTimer != null) {
+            vertx.cancelTimer(outstandingTimer);
+            evictionTimersCache.remove(multiKey);
+        }
+    }
+
+    private void createEvictionTimer(MultiKey key, long ttl) {
+        final long timerId = vertx.setTimer(ttl, timerIdRef -> {
+            if (evictionTimersCache.containsValue(timerIdRef)) {
+                log.debug("EVICTING entry from cache for key {}", key);
+                requestCache.remove(key);
+                evictionTimersCache.remove(key);
+            }
+        });
+        evictionTimersCache.put(key, timerId);
+    }
+
+    private void finishRequest(Optional<MultiKey> key) {
+        if (timeoutInMillis > 0) {
             httpClientRequest.setTimeout(timeoutInMillis);
         }
         httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
+        key.ifPresent(e -> runningRequests.put(e, this));
         logRequest();
     }
 
