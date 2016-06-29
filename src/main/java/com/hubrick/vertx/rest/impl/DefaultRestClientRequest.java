@@ -86,6 +86,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     // Status variables
     private boolean headersCopied = false;
     private boolean globalHeadersPopulated = false;
+    private MultiKey cacheKey;
 
     public DefaultRestClientRequest(Vertx vertx,
                                     DefaultRestClient restClient,
@@ -184,11 +185,9 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     private void handleResponse(RestClientResponse<T> restClientResponse) {
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
-            final MultiKey key = createCacheKey(uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
-
             boolean lastFiredRestClientRequest = false;
             final Set<DefaultRestClientRequest<T>> restClientRequestsToHandle = new LinkedHashSet<>();
-            for (DefaultRestClientRequest<T> entry : restClient.getRunningRequests().get(key)) {
+            for (DefaultRestClientRequest<T> entry : restClient.getRunningRequests().get(cacheKey)) {
                 if(entry == this) {
                     lastFiredRestClientRequest = true;
                 } else if(entry.requestCacheOptions.getEvictBefore() || entry.requestCacheOptions.getEvictAllBefore()) {
@@ -202,16 +201,16 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             }
 
             if(lastFiredRestClientRequest) {
-                cache(restClientResponse, uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
+                cache(restClientResponse);
             }
 
             for (DefaultRestClientRequest<T> entry : restClientRequestsToHandle) {
                 vertx.runOnContext(aVoid -> {
-                    log.debug("Handling FUTURE HIT for key {} and restClientRequest {}", key, entry);
+                    log.debug("Handling FUTURE HIT for key {} and restClientRequest {}", cacheKey, entry);
                     entry.responseHandler.handle(restClientResponse);
                 });
             }
-            restClient.getRunningRequests().get(key).removeAll(restClientRequestsToHandle);
+            restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestsToHandle);
         } else {
             responseHandler.handle(restClientResponse);
         }
@@ -420,43 +419,41 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         );
     }
 
-    private void cache(RestClientResponse restClientResponse, String uri, MultiMap headers, byte[] body) {
-        final MultiKey key = createCacheKey(uri, headers, body);
-
+    private void cache(RestClientResponse restClientResponse) {
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null && requestCacheOptions.getCachedStatusCodes().contains(restClientResponse.statusCode())) {
-            log.debug("Caching entry with key {}", key);
+            log.debug("Caching entry with key {}", cacheKey);
 
-            cancelOutstandingEvictionTimer(key);
-            restClient.getRequestCache().put(key, restClientResponse);
-            createEvictionTimer(key, requestCacheOptions.getExpiresAfterWriteMillis());
+            cancelOutstandingEvictionTimer(cacheKey);
+            restClient.getRequestCache().put(cacheKey, restClientResponse);
+            createEvictionTimer(cacheKey, requestCacheOptions.getExpiresAfterWriteMillis());
         }
     }
 
     private void endRequest() {
         copyHeadersToHttpClientRequest();
         writeContentLength();
+        cacheKey = createCacheKey(uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
 
-        final MultiKey key = createCacheKey(uri, bufferedHttpOutputMessage.getHeaders(), bufferedHttpOutputMessage.getBody());
-        evictBefore(key);
+        evictBefore(cacheKey);
         evictAllBefore();
 
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
             try {
                 if (requestCacheOptions.getEvictBefore() || requestCacheOptions.getEvictAllBefore()) {
-                    log.debug("Cache MISS. Proceeding with request for key {}", key);
-                    finishRequest(Optional.of(key));
+                    log.debug("Cache MISS. Proceeding with request for key {}", cacheKey);
+                    finishRequest(Optional.of(cacheKey));
                 } else {
-                    final RestClientResponse cachedRestClientResponse = restClient.getRequestCache().get(key);
+                    final RestClientResponse cachedRestClientResponse = restClient.getRequestCache().get(cacheKey);
                     if (cachedRestClientResponse != null) {
-                        log.debug("Cache HIT. Retrieving entry from cache for key {}", key);
-                        resetExpires(key);
+                        log.debug("Cache HIT. Retrieving entry from cache for key {}", cacheKey);
+                        resetExpires(cacheKey);
                         responseHandler.handle(cachedRestClientResponse);
-                    } else if (restClient.getRunningRequests().containsKey(key) && !restClient.getRunningRequests().get(key).isEmpty()) {
-                        log.debug("Cache FUTURE HIT for key {}", key);
-                        restClient.getRunningRequests().put(key, this);
+                    } else if (restClient.getRunningRequests().containsKey(cacheKey) && !restClient.getRunningRequests().get(cacheKey).isEmpty()) {
+                        log.debug("Cache FUTURE HIT for key {}", cacheKey);
+                        restClient.getRunningRequests().put(cacheKey, this);
                     } else {
-                        log.debug("Cache MISS. Proceeding with request for key {}", key);
-                        finishRequest(Optional.of(key));
+                        log.debug("Cache MISS. Proceeding with request for key {}", cacheKey);
+                        finishRequest(Optional.of(cacheKey));
                     }
                 }
             } catch (Throwable t) {
