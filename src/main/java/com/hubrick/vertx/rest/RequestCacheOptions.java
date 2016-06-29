@@ -41,14 +41,14 @@ public class RequestCacheOptions {
 
     /**
      * Sets the time to live after write for the request cache entries. This is the initial time to live.
-     * If accessed entries ttl stays the same and doesn't get reset. Default is 0 millis which means it's disabled.
+     * If accessed entries ttl stays the same and doesn't get reset. Default is 2000 millis.
      * This will only work with GET
      *
      * @param expiresAfterWriteMillis The quantity of time in milliseconds.
      * @return A reference to this, so multiple method calls can be chained.
      */
     public RequestCacheOptions withExpiresAfterWriteMillis(int expiresAfterWriteMillis) {
-        checkArgument(expiresAfterWriteMillis >= 0, "expiresAfterWriteMillis must be greater or equal to 0");
+        checkArgument(expiresAfterWriteMillis > 0, "expiresAfterWriteMillis must be not null 0");
         this.expiresAfterWriteMillis = expiresAfterWriteMillis;
         return this;
     }
@@ -75,7 +75,7 @@ public class RequestCacheOptions {
 
     /**
      * Sets the time to live for the request cache entries on every access of the entry.
-     * If accessed ttl is reset to to expiresAfterAccessMillis. Default is 1000 millis.
+     * If accessed ttl is reset to to expiresAfterAccessMillis. Default is 0 millis which means it's disabled.
      * This will only work with GET
      *
      * @param expiresAfterAccessMillis If set to true the whole cache will be evicted
