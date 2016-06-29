@@ -206,8 +206,10 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             }
 
             for (DefaultRestClientRequest<T> entry : restClientRequestsToHandle) {
-                log.debug("Handling FUTURE HIT for key {} and restClientRequest {}", key, entry);
-                vertx.runOnContext(aVoid -> entry.responseHandler.handle(restClientResponse));
+                vertx.runOnContext(aVoid -> {
+                    log.debug("Handling FUTURE HIT for key {} and restClientRequest {}", key, entry);
+                    entry.responseHandler.handle(restClientResponse);
+                });
             }
             restClient.getRunningRequests().get(key).removeAll(restClientRequestsToHandle);
         } else {
