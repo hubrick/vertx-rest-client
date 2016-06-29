@@ -47,12 +47,10 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -304,61 +302,6 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         }
     }
 
-    private void handleResponse(HttpClientResponse httpClientResponse, Class clazz) {
-        final Integer firstStatusDigit = httpClientResponse.statusCode() / 100;
-        if (firstStatusDigit == 4 || firstStatusDigit == 5) {
-            httpClientResponse.bodyHandler((buffer) -> {
-                httpClientResponse.exceptionHandler(null);
-                if (log.isWarnEnabled()) {
-                    final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
-                }
-
-                RuntimeException exception = null;
-                switch (firstStatusDigit) {
-                    case 4:
-                        exception = new HttpClientErrorException(httpClientResponse, httpMessageConverters, buffer.getBytes());
-                        break;
-                    case 5:
-                        exception = new HttpServerErrorException(httpClientResponse, httpMessageConverters, buffer.getBytes());
-                        break;
-                }
-                if (exceptionHandler != null) {
-                    exceptionHandler.handle(exception);
-                } else {
-                    throw exception;
-                }
-            });
-        } else {
-            httpClientResponse.bodyHandler((buffer) -> {
-                httpClientResponse.exceptionHandler(null);
-                if (log.isDebugEnabled()) {
-                    final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
-                }
-
-                try {
-                    final RestClientResponse<T> restClientResponse = new DefaultRestClientResponse(
-                            httpMessageConverters,
-                            clazz,
-                            buffer.getBytes(),
-                            httpClientResponse,
-                            exceptionHandler
-                    );
-
-                    handleResponse(restClientResponse);
-                } catch (Throwable t) {
-                    log.error("Failed invoking rest handler", t);
-                    if (exceptionHandler != null) {
-                        exceptionHandler.handle(t);
-                    } else {
-                        throw t;
-                    }
-                }
-            });
-        }
-    }
-
     private void endRequest() {
         copyHeadersToHttpClientRequest();
         writeContentLength();
@@ -400,36 +343,98 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         }
     }
 
+    private void handleResponse(HttpClientResponse httpClientResponse, Class clazz) {
+        final Integer firstStatusDigit = httpClientResponse.statusCode() / 100;
+        if (firstStatusDigit == 4 || firstStatusDigit == 5) {
+            httpClientResponse.bodyHandler((buffer) -> {
+                httpClientResponse.exceptionHandler(null);
+                if (log.isWarnEnabled()) {
+                    final String body = new String(buffer.getBytes(), Charsets.UTF_8);
+                    log.warn("Http request to {} FAILED. Return status: {}, message: {}, body: {}", new Object[]{uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                }
+
+                RuntimeException exception = null;
+                switch (firstStatusDigit) {
+                    case 4:
+                        exception = new HttpClientErrorException(httpClientResponse, httpMessageConverters, buffer.getBytes());
+                        break;
+                    case 5:
+                        exception = new HttpServerErrorException(httpClientResponse, httpMessageConverters, buffer.getBytes());
+                        break;
+                }
+                handleException(exception);
+            });
+        } else {
+            httpClientResponse.bodyHandler((buffer) -> {
+                httpClientResponse.exceptionHandler(null);
+                if (log.isDebugEnabled()) {
+                    final String body = new String(buffer.getBytes(), Charsets.UTF_8);
+                    log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                }
+
+                final RestClientResponse<T> restClientResponse = new DefaultRestClientResponse(
+                        httpMessageConverters,
+                        clazz,
+                        buffer.getBytes(),
+                        httpClientResponse,
+                        exceptionHandler
+                );
+
+                handleResponse(restClientResponse);
+            });
+        }
+    }
+
     private void handleResponse(RestClientResponse<T> restClientResponse) {
         if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
-            boolean lastFiredRestClientRequest = false;
-            final Set<DefaultRestClientRequest<T>> restClientRequestsToHandle = new LinkedHashSet<>();
-            for (DefaultRestClientRequest<T> entry : restClient.getRunningRequests().get(cacheKey)) {
-                if(entry == this) {
-                    lastFiredRestClientRequest = true;
-                } else if(entry.requestCacheOptions.getEvictBefore() || entry.requestCacheOptions.getEvictAllBefore()) {
-                    lastFiredRestClientRequest = false;
-                    break;
-                }
+            final RestClientRequestSlice<T> restClientRequestSlice = getRestClientRequestSlice();
 
-                if(lastFiredRestClientRequest) {
-                    restClientRequestsToHandle.add(entry);
-                }
-            }
-
-            if(lastFiredRestClientRequest) {
+            if (restClientRequestSlice.isLastFiredRestClientRequest()) {
                 cache(restClientResponse);
             }
 
-            for (DefaultRestClientRequest<T> entry : restClientRequestsToHandle) {
+            for (DefaultRestClientRequest<T> entry : restClientRequestSlice.getRestClientRequestSlice()) {
                 vertx.runOnContext(aVoid -> {
-                    log.debug("Handling FUTURE HIT for key {} and restClientRequest {}", cacheKey, entry);
-                    entry.responseHandler.handle(restClientResponse);
+                    try {
+                        log.debug("Handling FUTURE HIT for key {} and restClientRequest {}", cacheKey, entry);
+                        entry.responseHandler.handle(restClientResponse);
+                    } catch (Throwable t) {
+                        log.error("Failed invoking rest handler", t);
+                        if (entry.exceptionHandler != null) {
+                            entry.exceptionHandler.handle(t);
+                        } else {
+                            throw t;
+                        }
+                    }
                 });
             }
-            restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestsToHandle);
+            restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestSlice.getRestClientRequestSlice());
         } else {
             responseHandler.handle(restClientResponse);
+        }
+    }
+
+    private void handleException(RuntimeException exception) {
+        if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
+            final RestClientRequestSlice<T> restClientRequestSlice = getRestClientRequestSlice();
+            for (DefaultRestClientRequest<T> entry : restClientRequestSlice.getRestClientRequestSlice()) {
+                vertx.runOnContext(aVoid -> {
+                    if (entry.exceptionHandler != null) {
+                        log.error("Http error. Handling exception", exception);
+                        entry.exceptionHandler.handle(exception);
+                    } else {
+                        throw exception;
+                    }
+                });
+                restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestSlice.getRestClientRequestSlice());
+            }
+        } else {
+            if (exceptionHandler != null) {
+                log.error("Http error. Handling exception", exception);
+                exceptionHandler.handle(exception);
+            } else {
+                throw exception;
+            }
         }
     }
 
@@ -441,6 +446,25 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             restClient.getRequestCache().put(cacheKey, restClientResponse);
             createEvictionTimer(cacheKey, requestCacheOptions.getExpiresAfterWriteMillis());
         }
+    }
+
+    private RestClientRequestSlice getRestClientRequestSlice() {
+        boolean lastFiredRestClientRequest = false;
+        final List<DefaultRestClientRequest<T>> restClientRequestsToHandle = new LinkedList<>();
+        for (DefaultRestClientRequest<T> entry : restClient.getRunningRequests().get(cacheKey)) {
+            if (entry == this) {
+                lastFiredRestClientRequest = true;
+            } else if (lastFiredRestClientRequest && (entry.requestCacheOptions.getEvictBefore() || entry.requestCacheOptions.getEvictAllBefore())) {
+                lastFiredRestClientRequest = false;
+                break;
+            }
+
+            if (lastFiredRestClientRequest) {
+                restClientRequestsToHandle.add(entry);
+            }
+        }
+
+        return new RestClientRequestSlice(restClientRequestsToHandle, lastFiredRestClientRequest);
     }
 
     private void logRequest() {
@@ -580,5 +604,24 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             result.add(mediaType);
         }
         return result;
+    }
+
+    private static class RestClientRequestSlice<T> {
+
+        private final List<DefaultRestClientRequest<T>> restClientRequestSlice;
+        private final boolean lastFiredRestClientRequest;
+
+        private RestClientRequestSlice(List<DefaultRestClientRequest<T>> restClientRequestSlice, boolean lastFiredRestClientRequest) {
+            this.restClientRequestSlice = restClientRequestSlice;
+            this.lastFiredRestClientRequest = lastFiredRestClientRequest;
+        }
+
+        public List<DefaultRestClientRequest<T>> getRestClientRequestSlice() {
+            return restClientRequestSlice;
+        }
+
+        public boolean isLastFiredRestClientRequest() {
+            return lastFiredRestClientRequest;
+        }
     }
 }

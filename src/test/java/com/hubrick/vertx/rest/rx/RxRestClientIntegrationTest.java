@@ -62,6 +62,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         clientOptions.setDefaultHost("localhost");
         clientOptions.setDefaultPort(MOCKSERVER_PORT);
         clientOptions.setMaxPoolSize(10);
+        clientOptions.setGlobalRequestTimeout(1000000);
 
         rxRestClient = RxRestClient.create(
                 vertx,
@@ -72,7 +73,6 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                         new JacksonJsonHttpMessageConverter(new ObjectMapper())
                 )
         );
-
     }
 
     @Test
@@ -148,62 +148,67 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
     public void testRequestWithCache(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000), 1);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000), 1);
+    }
+
+    @Test
+    public void testRequestWithCache_NotFoundHttpResponse(TestContext testContext) throws Exception {
+        testRequestCacheNotFound(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000), 1);
     }
 
     @Test
     public void testRequestWithoutCache(TestContext testContext) throws Exception {
-        testRequestCache(testContext, null, 3);
+        testRequestCacheOk(testContext, null, 3);
     }
 
     @Test
     public void testRequestWithCacheEvictAll(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000).withEvictAllBefore(true), 3);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000).withEvictAllBefore(true), 3);
     }
 
     @Test
     public void testRequestWithCacheEvicted(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
 
         // Wait until evicted
         Thread.sleep(5000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
     }
 
     @Test
     public void testRequestWithCacheNotEvicted(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
 
         Thread.sleep(1000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 0);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 0);
     }
 
     @Test
     public void testRequestWithCacheEvictedWithExpiresAfterOnAccess(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000).withExpiresAfterAccessMillis(500), 1);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000).withExpiresAfterAccessMillis(500), 1);
 
         // Wait until evicted
         Thread.sleep(1000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 1);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 0);
     }
 
     @Test
     public void testRequestWithCacheNotEvictedWithExpiresAfterOnAccess(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000).withExpiresAfterAccessMillis(2000), 1);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000).withExpiresAfterAccessMillis(2000), 1);
 
         Thread.sleep(1000);
 
         getMockServerClient().reset();
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 0);
+        testRequestCacheOk(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(4000), 0);
     }
 
-    private void testRequestCache(TestContext testContext, RequestCacheOptions requestCacheOptions, int timesCalled) throws Exception {
+    private void testRequestCacheOk(TestContext testContext, RequestCacheOptions requestCacheOptions, int timesCalled) throws Exception {
 
         final HttpRequest httpRequest = request().withMethod("GET").withPath("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819");
         getMockServerClient().when(
@@ -219,8 +224,34 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
                 .map(userResponseRestClientResponse -> userResponseRestClientResponse.getBody());
 
-        Observable.defer(request)
-                .flatMap(userResponse -> Observable.merge(Observable.defer(request), Observable.defer(request)))
+        Observable.concatEager(Observable.defer(request), Observable.defer(request), Observable.defer(request))
+                .subscribe(
+                        aVoid -> {
+                            // Do nothing
+                        },
+                        testContext::fail,
+                        () -> {
+                            VertxMatcherAssert.assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
+                            async.complete();
+                        }
+                );
+    }
+
+    private void testRequestCacheNotFound(TestContext testContext, RequestCacheOptions requestCacheOptions, int timesCalled) throws Exception {
+
+        final HttpRequest httpRequest = request().withMethod("GET").withPath("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819");
+        getMockServerClient().when(
+                httpRequest
+        ).respond(
+                response().withStatusCode(404)
+        );
+
+        final Async async = testContext.async();
+        final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
+                .map(userResponseRestClientResponse -> userResponseRestClientResponse.getBody());
+
+        Observable.concatEager(Observable.defer(request), Observable.defer(request), Observable.defer(request))
+                .onErrorResumeNext(throwable -> Observable.just(null))
                 .subscribe(
                         aVoid -> {
                             // Do nothing
