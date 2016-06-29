@@ -193,6 +193,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                     lastFiredRestClientRequest = true;
                 } else if(entry.requestCacheOptions.getEvictBefore() || entry.requestCacheOptions.getEvictAllBefore()) {
                     lastFiredRestClientRequest = false;
+                    break;
                 }
 
                 if(lastFiredRestClientRequest) {
