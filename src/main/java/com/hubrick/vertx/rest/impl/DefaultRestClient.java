@@ -15,6 +15,8 @@
  */
 package com.hubrick.vertx.rest.impl;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientOptions;
 import com.hubrick.vertx.rest.RestClientRequest;
@@ -44,6 +46,7 @@ public class DefaultRestClient implements RestClient {
 
     private final Map<MultiKey, RestClientResponse> requestCache = new HashMap<>();
     private final Map<MultiKey, Long> evictionTimersCache = new HashMap<>();
+    private final Multimap<MultiKey, Handler<RestClientResponse>> runningRequests = HashMultimap.create();
 
     private final Vertx vertx;
     private final HttpClient httpClient;
@@ -139,6 +142,7 @@ public class DefaultRestClient implements RestClient {
                 responseHandler,
                 requestCache,
                 evictionTimersCache,
+                runningRequests,
                 options.getGlobalRequestTimeoutInMillis(),
                 options.getGlobalRequestCacheOptions(),
                 options.getGlobalHeaders(),

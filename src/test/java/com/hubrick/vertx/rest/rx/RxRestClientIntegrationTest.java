@@ -158,7 +158,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
     public void testRequestWithCacheEvictAll(TestContext testContext) throws Exception {
-        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000).withEvictAllBefore(true), 3);
+        testRequestCache(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000).withEvictAllBefore(true), 2);
     }
 
     @Test
