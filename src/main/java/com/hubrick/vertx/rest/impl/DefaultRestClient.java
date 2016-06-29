@@ -64,6 +64,18 @@ public class DefaultRestClient implements RestClient {
         this.options = new RestClientOptions(clientOptions);
     }
 
+    Map<MultiKey, RestClientResponse> getRequestCache() {
+        return requestCache;
+    }
+
+    Map<MultiKey, Long> getEvictionTimersCache() {
+        return evictionTimersCache;
+    }
+
+    LinkedListMultimap<MultiKey, DefaultRestClientRequest> getRunningRequests() {
+        return runningRequests;
+    }
+
     @Override
     public RestClient exceptionHandler(Handler<Throwable> handler) {
         this.exceptionHandler = handler;
@@ -133,15 +145,13 @@ public class DefaultRestClient implements RestClient {
     private <T> DefaultRestClientRequest<T> handleRequest(HttpMethod method, String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
         return new DefaultRestClientRequest(
                 vertx,
+                this,
                 httpClient,
                 httpMessageConverters,
                 method,
                 uri,
                 responseClass,
                 responseHandler,
-                requestCache,
-                evictionTimersCache,
-                runningRequests,
                 options.getGlobalRequestTimeoutInMillis(),
                 options.getGlobalRequestCacheOptions(),
                 options.getGlobalHeaders(),

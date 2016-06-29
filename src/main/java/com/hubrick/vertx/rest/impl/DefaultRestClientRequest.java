@@ -20,7 +20,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
-import com.google.common.collect.LinkedListMultimap;
 import com.google.common.io.BaseEncoding;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RequestCacheOptions;
@@ -70,6 +69,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private static final Logger log = LoggerFactory.getLogger(DefaultRestClientRequest.class);
 
     private final Vertx vertx;
+    private final DefaultRestClient restClient;
     private final HttpClient httpClient;
     private final HttpMethod method;
     private final String uri;
@@ -78,9 +78,6 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private final HttpClientRequest httpClientRequest;
     private final MultiMap globalHeaders;
     private final Handler<RestClientResponse<T>> responseHandler;
-    private final Map<MultiKey, RestClientResponse> requestCache;
-    private final Map<MultiKey, Long> evictionTimersCache;
-    private final LinkedListMultimap<MultiKey, DefaultRestClientRequest<T>> runningRequests;
     private Handler<Throwable> exceptionHandler;
 
     private RequestCacheOptions requestCacheOptions;
@@ -91,36 +88,31 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private boolean globalHeadersPopulated = false;
 
     public DefaultRestClientRequest(Vertx vertx,
+                                    DefaultRestClient restClient,
                                     HttpClient httpClient,
                                     List<HttpMessageConverter> httpMessageConverters,
                                     HttpMethod method,
                                     String uri,
                                     Class<T> responseClass,
                                     Handler<RestClientResponse<T>> responseHandler,
-                                    Map<MultiKey, RestClientResponse> requestCache,
-                                    Map<MultiKey, Long> evictionTimersCache,
-                                    LinkedListMultimap<MultiKey, DefaultRestClientRequest<T>> runningRequests,
                                     Long timeoutInMillis,
                                     RequestCacheOptions requestCacheOptions,
                                     MultiMap globalHeaders,
                                     @Nullable Handler<Throwable> exceptionHandler) {
+        checkNotNull(vertx, "vertx must not be null");
+        checkNotNull(restClient, "restClient must not be null");
         checkNotNull(httpClient, "httpClient must not be null");
         checkNotNull(httpMessageConverters, "dataMappers must not be null");
         checkArgument(!httpMessageConverters.isEmpty(), "dataMappers must not be empty");
         checkNotNull(globalHeaders, "globalHeaders must not be null");
-        checkNotNull(requestCache, "requestCache must not be null");
-        checkNotNull(evictionTimersCache, "evictionTimersCache must not be null");
-        checkNotNull(runningRequests, "runningRequests must not be null");
 
         this.vertx = vertx;
+        this.restClient = restClient;
         this.httpClient = httpClient;
         this.method = method;
         this.uri = uri;
         this.httpMessageConverters = httpMessageConverters;
         this.responseHandler = responseHandler;
-        this.requestCache = requestCache;
-        this.evictionTimersCache = evictionTimersCache;
-        this.runningRequests = runningRequests;
         this.globalHeaders = globalHeaders;
 
         httpClientRequest = httpClient.request(method, uri, (HttpClientResponse httpClientResponse) -> {
@@ -196,7 +188,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
             boolean lastFiredRestClientRequest = false;
             final Set<DefaultRestClientRequest<T>> restClientRequestsToHandle = new LinkedHashSet<>();
-            for (DefaultRestClientRequest<T> entry : runningRequests.get(key)) {
+            for (DefaultRestClientRequest<T> entry : restClient.getRunningRequests().get(key)) {
                 if(entry == this) {
                     lastFiredRestClientRequest = true;
                 } else if(entry.requestCacheOptions.getEvictBefore() || entry.requestCacheOptions.getEvictAllBefore()) {
@@ -216,7 +208,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 log.debug("Handling FUTURE HIT for key {} and restClientRequest {}", key, entry);
                 vertx.runOnContext(aVoid -> entry.responseHandler.handle(restClientResponse));
             }
-            runningRequests.get(key).removeAll(restClientRequestsToHandle);
+            restClient.getRunningRequests().get(key).removeAll(restClientRequestsToHandle);
         } else {
             responseHandler.handle(restClientResponse);
         }
@@ -432,7 +424,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             log.debug("Caching entry with key {}", key);
 
             cancelOutstandingEvictionTimer(key);
-            requestCache.put(key, restClientResponse);
+            restClient.getRequestCache().put(key, restClientResponse);
             createEvictionTimer(key, requestCacheOptions.getExpiresAfterWriteMillis());
         }
     }
@@ -451,14 +443,14 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                     log.debug("Cache MISS. Proceeding with request for key {}", key);
                     finishRequest(Optional.of(key));
                 } else {
-                    final RestClientResponse cachedRestClientResponse = requestCache.get(key);
+                    final RestClientResponse cachedRestClientResponse = restClient.getRequestCache().get(key);
                     if (cachedRestClientResponse != null) {
                         log.debug("Cache HIT. Retrieving entry from cache for key {}", key);
                         resetExpires(key);
                         responseHandler.handle(cachedRestClientResponse);
-                    } else if (runningRequests.containsKey(key) && !runningRequests.get(key).isEmpty()) {
+                    } else if (restClient.getRunningRequests().containsKey(key) && !restClient.getRunningRequests().get(key).isEmpty()) {
                         log.debug("Cache FUTURE HIT for key {}", key);
-                        runningRequests.put(key, this);
+                        restClient.getRunningRequests().put(key, this);
                     } else {
                         log.debug("Cache MISS. Proceeding with request for key {}", key);
                         finishRequest(Optional.of(key));
@@ -481,7 +473,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         if (requestCacheOptions != null && requestCacheOptions.getEvictBefore()) {
             log.debug("EVICTING entry from cache for key {}", key);
             cancelOutstandingEvictionTimer(key);
-            requestCache.remove(key);
+            restClient.getRequestCache().remove(key);
         }
     }
 
@@ -495,28 +487,28 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private void evictAllBefore() {
         if (requestCacheOptions != null && requestCacheOptions.getEvictAllBefore()) {
             log.debug("EVICTING all entries from cache");
-            requestCache.clear();
-            evictionTimersCache.clear();
+            restClient.getRequestCache().clear();
+            restClient.getEvictionTimersCache().clear();
         }
     }
 
     private void cancelOutstandingEvictionTimer(MultiKey multiKey) {
-        final Long outstandingTimer = evictionTimersCache.get(multiKey);
+        final Long outstandingTimer = restClient.getEvictionTimersCache().get(multiKey);
         if (outstandingTimer != null) {
             vertx.cancelTimer(outstandingTimer);
-            evictionTimersCache.remove(multiKey);
+            restClient.getEvictionTimersCache().remove(multiKey);
         }
     }
 
     private void createEvictionTimer(MultiKey key, long ttl) {
         final long timerId = vertx.setTimer(ttl, timerIdRef -> {
-            if (evictionTimersCache.containsValue(timerIdRef)) {
+            if (restClient.getEvictionTimersCache().containsValue(timerIdRef)) {
                 log.debug("EVICTING entry from cache for key {}", key);
-                requestCache.remove(key);
-                evictionTimersCache.remove(key);
+                restClient.getRequestCache().remove(key);
+                restClient.getEvictionTimersCache().remove(key);
             }
         });
-        evictionTimersCache.put(key, timerId);
+        restClient.getEvictionTimersCache().put(key, timerId);
     }
 
     private void finishRequest(Optional<MultiKey> key) {
@@ -524,7 +516,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             httpClientRequest.setTimeout(timeoutInMillis);
         }
         httpClientRequest.end(Buffer.buffer(bufferedHttpOutputMessage.getBody()));
-        key.ifPresent(e -> runningRequests.put(e, this));
+        key.ifPresent(e -> restClient.getRunningRequests().put(e, this));
         logRequest();
     }
 
