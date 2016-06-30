@@ -410,7 +410,16 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
             }
             restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestSlice.getRestClientRequestSlice());
         } else {
-            responseHandler.handle(restClientResponse);
+            try {
+                responseHandler.handle(restClientResponse);
+            } catch (Throwable t) {
+                log.error("Failed invoking rest handler", t);
+                if (exceptionHandler != null) {
+                    exceptionHandler.handle(t);
+                } else {
+                    throw t;
+                }
+            }
         }
     }
 
