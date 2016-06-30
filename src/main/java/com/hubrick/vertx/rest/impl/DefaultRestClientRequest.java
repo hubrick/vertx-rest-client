@@ -369,7 +369,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 httpClientResponse.exceptionHandler(null);
                 if (log.isDebugEnabled()) {
                     final String body = new String(buffer.getBytes(), Charsets.UTF_8);
-                    log.debug("Http request to {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
+                    log.debug("Http request to {} {} SUCCESSFUL. Return status: {}, message: {}, body: {}", new Object[]{method, uri, httpClientResponse.statusCode(), httpClientResponse.statusMessage(), body});
                 }
 
                 final RestClientResponse<T> restClientResponse = new DefaultRestClientResponse(
