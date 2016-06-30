@@ -426,8 +426,8 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                         throw exception;
                     }
                 });
-                restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestSlice.getRestClientRequestSlice());
             }
+            restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestSlice.getRestClientRequestSlice());
         } else {
             if (exceptionHandler != null) {
                 log.error("Http error. Handling exception", exception);
