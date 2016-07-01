@@ -321,7 +321,18 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                     if (cachedRestClientResponse != null) {
                         log.debug("Cache HIT. Retrieving entry from cache for key {}", cacheKey);
                         resetExpires(cacheKey);
-                        responseHandler.handle(cachedRestClientResponse);
+                        vertx.runOnContext(aVoid -> {
+                            try {
+                                responseHandler.handle(cachedRestClientResponse);
+                            } catch (Throwable t) {
+                                log.error("Failed invoking rest handler", t);
+                                if (exceptionHandler != null) {
+                                    exceptionHandler.handle(t);
+                                } else {
+                                    throw t;
+                                }
+                            }
+                        });
                     } else if (restClient.getRunningRequests().containsKey(cacheKey) && !restClient.getRunningRequests().get(cacheKey).isEmpty()) {
                         log.debug("Cache FUTURE HIT for key {}", cacheKey);
                         restClient.getRunningRequests().put(cacheKey, this);
