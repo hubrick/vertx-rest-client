@@ -148,7 +148,7 @@ public class ExampleVerticle extends Verticle {
             .setKeepAlive(true)
             .setMaxPoolSize(500);
 
-        final RestClient restClient = new DefaultRestClient(vertx, restClientOptions, httpMessageConverters);
+        final RestClient restClient = RestClien.create(vertx, restClientOptions, httpMessageConverters);
                                      
         // GET example
         final RestClientRequest getRestClientRequest = restClient.get("/api/users/123", SomeReturnObject.class, getRestResponse -> {
@@ -195,8 +195,7 @@ public class ExampleVerticle extends Verticle {
             .setKeepAlive(true)
             .setMaxPoolSize(500);
 
-        final RestClient restClient = new DefaultRestClient(vertx, restClientOptions, httpMessageConverters);
-        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
+        final RxRestClient rxRestClient = RxRestClient.create(vertx, restClientOptions, httpMessageConverters);
                                      
         // GET example
         final Observable<RestClientResponse> getRestClientResponse = rxRestClient.get("/api/users/123", SomeReturnObject.class, restClientRequest -> restClientRequest.end());
