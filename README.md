@@ -13,7 +13,7 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 
 ## Dependencies
 
-### Dependency Vert.x 2.x.x
+### Dependency Vert.x 2.x.x (Deprecated and not maintained anymore)
 ### Maven
 ```xml
 <dependency>
