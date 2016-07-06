@@ -148,7 +148,7 @@ public class ExampleVerticle extends Verticle {
             .setKeepAlive(true)
             .setMaxPoolSize(500);
 
-        final RestClient restClient = RestClien.create(vertx, restClientOptions, httpMessageConverters);
+        final RestClient restClient = RestClient.create(vertx, restClientOptions, httpMessageConverters);
                                      
         // GET example
         final RestClientRequest getRestClientRequest = restClient.get("/api/users/123", SomeReturnObject.class, getRestResponse -> {
