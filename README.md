@@ -215,7 +215,7 @@ public class ExampleVerticle extends Verticle {
 ### Request caching
 The request cache can be enabled by setting the RequestCacheOptions in the RestClientOptions or setting it on the RestClientRequest object itself which either enables caching on the whole client or per request. The intentation of this cache is to make RxJava flows simpler which means the same service can be called multiple times in the same RxJava flow without worrying that it will be really called multiple times. 
 
-The cache caches not only the results but also the calls itself in case the data from the cache can't be retrieve since the first fired request which should cache the data still didn't finish. When the first fired request is finished it will ditribute the data to all reuquests which have been interested in it.
+The cache caches not only the results but also the calls itself in case the data from the cache can't be retrieve since the first fired request which should cache the data still didn't finish. When the first fired request is finished it will distribute the data to all requests which are interested in it.
 
 The cache key is calculated using the uri, headers and body. Which means it will only hit the cache in case it's a identical request. To seperate the same request from different callers it's a good idea to introduce a unique requestId in the HTTP Header.
 
