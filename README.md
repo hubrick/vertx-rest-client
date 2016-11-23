@@ -44,52 +44,6 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 
 ## How to use
 
-### Vertx 2.x.x (Deprecated and not maintained anymore)
-#### Simple example 
-
-```java
-public class ExampleVerticle extends Verticle {
-
-    @Override
-    public void start() {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-            new FormHttpMessageConverter(), 
-            new StringHttpMessageConverter(), 
-            new JacksonJsonHttpMessageConverter(objectMapper)
-        );
-    
-        final RestClient restClient = new DefaultRestClient(vertx, httpMessageConverters)
-                                                          .setConnectTimeout(500)
-                                                          .setGlobalRequestTimeout(300)
-                                                          .setHost("example.com")
-                                                          .setPort(80)
-                                                          .setMaxPoolSize(500);
-                                     
-        // GET example
-        final RestClientRequest getRestClientRequest = restClient.get("/api/users/123", SomeReturnObject.class, getRestResponse -> {
-            final SomeReturnObject someReturnObject = getRestResponse.getBody();
-            // TODO: Handle response
-        });
-        getRestClientRequest.exceptionHandler(exception -> {
-            // TODO: Handle exception
-        });
-        getRestClientRequest.end();
-        
-        // POST example
-        final RestClientRequest postRestClientRequest = restClient.post("/api/users/123", SomeReturnObject.class, portRestResponse -> {
-            final SomeReturnObject someReturnObject = portRestResponse.getBody();
-            // TODO: Handle response
-        });
-        postRestClientRequest.exceptionHandler(exception -> {
-            // TODO: Handle exception
-        });
-        postRestClientRequest.setContentType(MediaType.TEXT_PLAIN);
-        postRestClientRequest.end("Some data");
-    }
-}
-```
-
 ### Vertx 3.x.x
 #### Simple example 
 
@@ -175,7 +129,51 @@ public class ExampleVerticle extends Verticle {
     }
 }
 ```
+### Vertx 2.x.x (Deprecated and not maintained anymore)
+#### Simple example 
 
+```java
+public class ExampleVerticle extends Verticle {
+
+    @Override
+    public void start() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+            new FormHttpMessageConverter(), 
+            new StringHttpMessageConverter(), 
+            new JacksonJsonHttpMessageConverter(objectMapper)
+        );
+    
+        final RestClient restClient = new DefaultRestClient(vertx, httpMessageConverters)
+                                                          .setConnectTimeout(500)
+                                                          .setGlobalRequestTimeout(300)
+                                                          .setHost("example.com")
+                                                          .setPort(80)
+                                                          .setMaxPoolSize(500);
+                                     
+        // GET example
+        final RestClientRequest getRestClientRequest = restClient.get("/api/users/123", SomeReturnObject.class, getRestResponse -> {
+            final SomeReturnObject someReturnObject = getRestResponse.getBody();
+            // TODO: Handle response
+        });
+        getRestClientRequest.exceptionHandler(exception -> {
+            // TODO: Handle exception
+        });
+        getRestClientRequest.end();
+        
+        // POST example
+        final RestClientRequest postRestClientRequest = restClient.post("/api/users/123", SomeReturnObject.class, portRestResponse -> {
+            final SomeReturnObject someReturnObject = portRestResponse.getBody();
+            // TODO: Handle response
+        });
+        postRestClientRequest.exceptionHandler(exception -> {
+            // TODO: Handle exception
+        });
+        postRestClientRequest.setContentType(MediaType.TEXT_PLAIN);
+        postRestClientRequest.end("Some data");
+    }
+}
+```
 
 #### RxJava example
 ```java
