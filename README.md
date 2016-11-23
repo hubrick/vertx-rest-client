@@ -13,6 +13,17 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 
 ## Dependencies
 
+### Dependency Vert.x 3.x.x
+### Maven
+```xml
+<dependency>
+    <groupId>com.hubrick.vertx</groupId>
+    <artifactId>vertx-rest-client</artifactId>
+    <version>2.1.0</version>
+</dependency>
+```
+
+
 ### Dependency Vert.x 2.x.x (Deprecated and not maintained anymore)
 ### Maven
 ```xml
@@ -29,16 +40,6 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 {
     "includes": "com.hubrick.vertx~vertx-rest-client~1.3.3",
 }
-```
-
-### Dependency Vert.x 3.x.x
-### Maven
-```xml
-<dependency>
-    <groupId>com.hubrick.vertx</groupId>
-    <artifactId>vertx-rest-client</artifactId>
-    <version>2.1.0</version>
-</dependency>
 ```
 
 ## How to use
@@ -85,42 +86,6 @@ public class ExampleVerticle extends Verticle {
         });
         postRestClientRequest.setContentType(MediaType.TEXT_PLAIN);
         postRestClientRequest.end("Some data");
-    }
-}
-```
-
-#### RxJava example
-```java
-public class ExampleVerticle extends Verticle {
-
-    @Override
-    public void start() {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-            new FormHttpMessageConverter(), 
-            new StringHttpMessageConverter(), 
-            new JacksonJsonHttpMessageConverter(objectMapper)
-        );
-    
-        final RestClient restClient = new DefaultRestClient(vertx, httpMessageConverters)
-                                                          .setConnectTimeout(500)
-                                                          .setGlobalRequestTimeout(300)
-                                                          .setHost("example.com")
-                                                          .setPort(80)
-                                                          .setMaxPoolSize(500);
-                                                          
-        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
-                                     
-        // GET example
-        final Observable<RestClientResponse> getRestClientResponse = rxRestClient.get("/api/users/123", SomeReturnObject.class, restClientRequest -> restClientRequest.end());
-        getRestClientResponse.subscribe(
-            getRestClientResponse -> { 
-                // Handle response
-            },
-            error -> {
-                // Handle exception
-            }
-        );
     }
 }
 ```
@@ -210,6 +175,44 @@ public class ExampleVerticle extends Verticle {
     }
 }
 ```
+
+
+#### RxJava example
+```java
+public class ExampleVerticle extends Verticle {
+
+    @Override
+    public void start() {
+        final ObjectMapper objectMapper = new ObjectMapper();
+        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
+            new FormHttpMessageConverter(), 
+            new StringHttpMessageConverter(), 
+            new JacksonJsonHttpMessageConverter(objectMapper)
+        );
+    
+        final RestClient restClient = new DefaultRestClient(vertx, httpMessageConverters)
+                                                          .setConnectTimeout(500)
+                                                          .setGlobalRequestTimeout(300)
+                                                          .setHost("example.com")
+                                                          .setPort(80)
+                                                          .setMaxPoolSize(500);
+                                                          
+        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
+                                     
+        // GET example
+        final Observable<RestClientResponse> getRestClientResponse = rxRestClient.get("/api/users/123", SomeReturnObject.class, restClientRequest -> restClientRequest.end());
+        getRestClientResponse.subscribe(
+            getRestClientResponse -> { 
+                // Handle response
+            },
+            error -> {
+                // Handle exception
+            }
+        );
+    }
+}
+```
+
 
 ### Request caching
 The request cache can be enabled by setting the RequestCacheOptions in the RestClientOptions or setting it on the RestClientRequest object itself which either enables caching on the whole client or per request. The intentation of this cache is to make RxJava flows simpler which means the same service can be called multiple times in the same RxJava flow without worrying that it will be really called multiple times. 
