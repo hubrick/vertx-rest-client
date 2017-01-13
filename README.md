@@ -18,8 +18,8 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 ```xml
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
-    <artifactId>vertx-elasticsearch-service</artifactId>
-    <version>1.0.0</version>
+    <artifactId>vertx-rest-client</artifactId>
+    <version>2.1.0</version>
 </dependency>
 ```
 
