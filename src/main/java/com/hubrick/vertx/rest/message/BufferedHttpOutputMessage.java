@@ -16,10 +16,12 @@
 package com.hubrick.vertx.rest.message;
 
 import com.hubrick.vertx.rest.HttpOutputMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
@@ -30,7 +32,7 @@ import java.util.Map;
 public class BufferedHttpOutputMessage implements HttpOutputMessage {
 
     private MultiMap headers = new CaseInsensitiveHeaders();
-    private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private final CompositeByteBuf byteBuf = Unpooled.compositeBuffer(64);
 
     @Override
     public MultiMap getHeaders() {
@@ -38,12 +40,14 @@ public class BufferedHttpOutputMessage implements HttpOutputMessage {
     }
 
     @Override
-    public void write(byte[] data) throws IOException {
-        byteArrayOutputStream.write(data);
+    public void write(ByteBuf data) throws IOException {
+        byteBuf.addComponent(data).writerIndex(byteBuf.writerIndex() + data.writerIndex());
     }
 
-    public byte[] getBody() {
-        return byteArrayOutputStream.toByteArray();
+    @Override
+    public ByteBuf getBody() {
+        byteBuf.resetReaderIndex();
+        return Unpooled.unmodifiableBuffer(byteBuf);
     }
 
     public void putAllHeaders(MultiMap headers) {

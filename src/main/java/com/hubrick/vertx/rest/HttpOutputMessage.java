@@ -15,6 +15,8 @@
  */
 package com.hubrick.vertx.rest;
 
+import io.netty.buffer.ByteBuf;
+
 import java.io.IOException;
 
 /**
@@ -29,5 +31,5 @@ public interface HttpOutputMessage extends HttpMessage {
      * @param data The data that should be written
      * @throws IOException in case of I/O Errors
      */
-    void write(byte[] data) throws IOException;
+    void write(ByteBuf data) throws IOException;
 }

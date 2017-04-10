@@ -21,6 +21,7 @@ import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
+import io.netty.buffer.Unpooled;
 import io.vertx.core.http.HttpHeaders;
 
 import java.nio.charset.Charset;
@@ -68,7 +69,9 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
     protected String readInternal(Class<? extends String> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
         try {
             final Charset charset = getContentTypeCharset(MediaType.parseMediaType(httpInputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE)));
-            return new String(httpInputMessage.getBody(), charset);
+            byte[] bytes = new byte[httpInputMessage.getBody().readableBytes()];
+            httpInputMessage.getBody().readBytes(bytes);
+            return new String(bytes, charset);
         } catch (Exception e) {
             throw new HttpMessageConverterException("Failed to read http body", e);
         }
@@ -81,7 +84,7 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
                 httpOutputMessage.getHeaders().set(HttpHeaders.ACCEPT_CHARSET, Joiner.on(",").join(getAcceptedCharsets()));
             }
             final Charset charset = getContentTypeCharset(MediaType.parseMediaType(httpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE)));
-            httpOutputMessage.write(object.getBytes(charset));
+            httpOutputMessage.write(Unpooled.wrappedBuffer(object.getBytes(charset)));
         } catch (Exception e) {
             throw new HttpMessageConverterException("Failed to write http body", e);
         }

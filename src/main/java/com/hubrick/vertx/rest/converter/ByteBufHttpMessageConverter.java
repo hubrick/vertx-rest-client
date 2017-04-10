@@ -19,40 +19,38 @@ import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
-import io.netty.buffer.Unpooled;
+import io.netty.buffer.ByteBuf;
 
 /**
  * Passthrough HttpMessageConverter.
  *
  * @author Emir Dizdarevic
- * @since 1.3.0
+ * @since 2.2.0
  */
-public class ByteArrayHttpMessageConverter extends AbstractHttpMessageConverter<byte[]> {
+public class ByteBufHttpMessageConverter extends AbstractHttpMessageConverter<ByteBuf> {
 
-    public ByteArrayHttpMessageConverter() {
+    public ByteBufHttpMessageConverter() {
         super(new MediaType("application", "octet-stream"), MediaType.ALL);
     }
 
     @Override
     public boolean supports(Class<?> clazz) {
-        return byte[].class.isAssignableFrom(clazz);
+        return ByteBuf.class.isAssignableFrom(clazz);
     }
 
     @Override
-    protected byte[] readInternal(Class<? extends byte[]> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
+    protected ByteBuf readInternal(Class<? extends ByteBuf> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
         try {
-            byte[] bytes = new byte[httpInputMessage.getBody().readableBytes()];
-            httpInputMessage.getBody().readBytes(bytes);
-            return bytes;
+            return httpInputMessage.getBody();
         } catch (Exception e) {
             throw new HttpMessageConverterException("Read of http body failed", e);
         }
     }
 
     @Override
-    protected void writeInternal(byte[] object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
+    protected void writeInternal(ByteBuf object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            httpOutputMessage.write(Unpooled.wrappedBuffer(object));
+            httpOutputMessage.write(object);
         } catch (Exception e) {
             throw new HttpMessageConverterException("Writing of http body failed", e);
         }

@@ -25,6 +25,8 @@ import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.vertx.core.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,9 +52,12 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
 
     @Override
     public Multimap<String, Object> read(Class<? extends Multimap<String, Object>> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
+        byte[] bytes = new byte[httpInputMessage.getBody().readableBytes()];
+        httpInputMessage.getBody().readBytes(bytes);
+
         final MediaType mediaType = MediaType.parseMediaType(httpInputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE));
-        Charset charset = (mediaType.getCharSet() != null ? mediaType.getCharSet() : this.charset);
-        String body = new String(httpInputMessage.getBody(), charset);
+        final Charset charset = (mediaType.getCharSet() != null ? mediaType.getCharSet() : this.charset);
+        final String body = new String(bytes, charset);
 
         try {
             String[] pairs = FluentIterable.from(Splitter.on("&").split(body)).toArray(String.class);
@@ -131,27 +136,26 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
             charset = this.charset;
         }
 
-        StringBuilder builder = new StringBuilder();
+        final ByteBuf bodyByteBuf = Unpooled.directBuffer();
         for (Iterator<String> nameIterator = form.keySet().iterator(); nameIterator.hasNext(); ) {
             String name = nameIterator.next();
             for (Iterator<Object> valueIterator = form.get(name).iterator(); valueIterator.hasNext(); ) {
                 Object value = valueIterator.next();
-                builder.append(URLEncoder.encode(name, charset.name()));
+                bodyByteBuf.writeBytes(URLEncoder.encode(name, charset.name()).getBytes());
                 if (value != null) {
-                    builder.append('=');
-                    builder.append(URLEncoder.encode(String.valueOf(value), charset.name()));
+                    bodyByteBuf.writeChar('=');
+                    bodyByteBuf.writeBytes(URLEncoder.encode(String.valueOf(value), charset.name()).getBytes());
                     if (valueIterator.hasNext()) {
-                        builder.append('&');
+                        bodyByteBuf.writeChar('&');
                     }
                 }
             }
             if (nameIterator.hasNext()) {
-                builder.append('&');
+                bodyByteBuf.writeChar('&');
             }
         }
-        final String payload = builder.toString();
-        final byte[] bytes = payload.getBytes(charset.name());
-        httpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bytes.length));
-        httpOutputMessage.write(bytes);
+
+        httpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bodyByteBuf.readableBytes()));
+        httpOutputMessage.write(bodyByteBuf);
     }
 }

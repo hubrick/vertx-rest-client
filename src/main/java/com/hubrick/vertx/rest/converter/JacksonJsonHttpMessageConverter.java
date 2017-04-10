@@ -22,6 +22,7 @@ import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
+import io.netty.buffer.Unpooled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,7 +122,9 @@ public class JacksonJsonHttpMessageConverter<T extends Object> extends AbstractH
     @Override
     protected T readInternal(Class<? extends T> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
         try {
-            return objectMapper.readValue(httpInputMessage.getBody(), clazz);
+            byte[] bytes = new byte[httpInputMessage.getBody().readableBytes()];
+            httpInputMessage.getBody().readBytes(bytes);
+            return objectMapper.readValue(bytes, clazz);
         } catch (IOException e) {
             throw new HttpMessageConverterException("Error converting from json.", e);
         }
@@ -130,7 +133,7 @@ public class JacksonJsonHttpMessageConverter<T extends Object> extends AbstractH
     @Override
     protected void writeInternal(T object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            httpOutputMessage.write(objectMapper.writeValueAsBytes(object));
+            httpOutputMessage.write(Unpooled.wrappedBuffer(objectMapper.writeValueAsBytes(object)));
         } catch (Exception e) {
             throw new HttpMessageConverterException("Error converting to json.", e);
         }
