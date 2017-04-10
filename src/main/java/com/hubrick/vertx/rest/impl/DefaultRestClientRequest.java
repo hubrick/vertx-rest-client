@@ -21,6 +21,7 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.FluentIterable;
 import com.google.common.io.BaseEncoding;
+import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RequestCacheOptions;
 import com.hubrick.vertx.rest.RestClientRequest;
@@ -29,7 +30,9 @@ import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.exception.HttpClientErrorException;
 import com.hubrick.vertx.rest.exception.HttpServerErrorException;
 import com.hubrick.vertx.rest.exception.RestClientException;
+import com.hubrick.vertx.rest.message.BufferedHttpInputMessage;
 import com.hubrick.vertx.rest.message.BufferedHttpOutputMessage;
+import io.netty.buffer.ByteBuf;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
@@ -45,7 +48,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -367,10 +369,10 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 RuntimeException exception = null;
                 switch (firstStatusDigit) {
                     case 4:
-                        exception = new HttpClientErrorException(httpClientResponse, httpMessageConverters, buffer.getBytes());
+                        exception = new HttpClientErrorException(httpClientResponse, createHttpInputMessage(buffer.getByteBuf(), httpClientResponse), httpMessageConverters);
                         break;
                     case 5:
-                        exception = new HttpServerErrorException(httpClientResponse, httpMessageConverters, buffer.getBytes());
+                        exception = new HttpServerErrorException(httpClientResponse,  createHttpInputMessage(buffer.getByteBuf(), httpClientResponse), httpMessageConverters);
                         break;
                 }
                 handleException(exception);
@@ -386,7 +388,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 final RestClientResponse<T> restClientResponse = new DefaultRestClientResponse(
                         httpMessageConverters,
                         clazz,
-                        buffer.getBytes(),
+                        createHttpInputMessage(buffer.getByteBuf(), httpClientResponse),
                         httpClientResponse,
                         exceptionHandler
                 );
@@ -487,8 +489,23 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         return new RestClientRequestSlice(restClientRequestsToHandle, lastFiredRestClientRequest);
     }
 
+    private HttpInputMessage createHttpInputMessage(ByteBuf body, HttpClientResponse httpClientResponse) {
+        return new BufferedHttpInputMessage(
+                body,
+                httpClientResponse.headers(),
+                httpClientResponse.trailers(),
+                httpClientResponse.statusMessage(),
+                httpClientResponse.statusCode(),
+                httpClientResponse.cookies()
+        );
+    }
+
     private void logRequest() {
         if (log.isDebugEnabled()) {
+            final ByteBuf bodyByteBuf = bufferedHttpOutputMessage.getBody();
+            byte[] bytes = new byte[bodyByteBuf.readableBytes()];
+            bodyByteBuf.readBytes(bytes);
+
             final StringBuilder stringBuilder = new StringBuilder(256);
             for (String headerName : httpClientRequest.headers().names()) {
                 for (String headerValue : httpClientRequest.headers().getAll(headerName)) {
@@ -500,7 +517,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                 }
             }
             stringBuilder.append("\r\n");
-            stringBuilder.append(new String(bufferedHttpOutputMessage.getBody(), Charsets.UTF_8));
+            stringBuilder.append(new String(bytes, Charsets.UTF_8));
 
             log.debug("HTTP Request: \n{}", stringBuilder.toString());
         }
@@ -510,11 +527,11 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         return requestCacheOptions.getEvictBefore() || requestCacheOptions.getEvictAllBefore();
     }
 
-    private MultiKey createCacheKey(String uri, MultiMap headers, byte[] body) {
+    private MultiKey createCacheKey(String uri, MultiMap headers, ByteBuf body) {
         return new MultiKey(
                 uri,
                 headers.entries().stream().map(e -> e.getKey() + ": " + e.getValue()).sorted().collect(Collectors.toList()),
-                Arrays.hashCode(body)
+                body.hashCode()
         );
     }
 
@@ -571,7 +588,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
 
     private void writeContentLength() {
         if (!httpClientRequest.isChunked() && Strings.isNullOrEmpty(bufferedHttpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_LENGTH))) {
-            bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bufferedHttpOutputMessage.getBody().length));
+            bufferedHttpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bufferedHttpOutputMessage.getBody().readableBytes()));
         }
     }
 

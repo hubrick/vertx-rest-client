@@ -15,12 +15,14 @@
  */
 package com.hubrick.vertx.rest.exception;
 
+import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.impl.DefaultRestClientResponse;
+import io.netty.buffer.ByteBuf;
 import io.vertx.core.MultiMap;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.streams.StreamBase;
 
 import java.nio.charset.Charset;
 import java.util.List;
@@ -38,20 +40,20 @@ public abstract class HttpStatusCodeException extends RestClientException {
 
     private static final String DEFAULT_CHARSET = "ISO-8859-1";
 
-    private final HttpClientResponse httpClientResponse;
+    private final StreamBase streamBase;
+    private final HttpInputMessage httpInputMessage;
     private final List<HttpMessageConverter> httpMessageConverters;
-    private final byte[] responseBody;
 
-    protected HttpStatusCodeException(HttpClientResponse httpClientResponse, List<HttpMessageConverter> httpMessageConverters, byte[] responseBody) {
-        super(httpClientResponse.statusMessage());
-        checkNotNull(httpClientResponse, "httpClientResponse must not be null");
+    protected HttpStatusCodeException(StreamBase streamBase, HttpInputMessage httpInputMessage, List<HttpMessageConverter> httpMessageConverters) {
+        super(httpInputMessage.getStatusMessage());
+        checkNotNull(streamBase, "streamBase must not be null");
+        checkNotNull(httpInputMessage, "httpInputMessage must not be null");
         checkNotNull(httpMessageConverters, "dataMappers must not be null");
         checkArgument(!httpMessageConverters.isEmpty(), "dataMappers must not be empty");
-        checkNotNull(responseBody, "responseBody must not be null");
 
-        this.httpClientResponse = httpClientResponse;
+        this.streamBase = streamBase;
+        this.httpInputMessage = httpInputMessage;
         this.httpMessageConverters = httpMessageConverters;
-        this.responseBody = responseBody;
     }
 
 
@@ -59,14 +61,14 @@ public abstract class HttpStatusCodeException extends RestClientException {
      * Return the HTTP status code.
      */
     public Integer getStatusCode() {
-        return httpClientResponse.statusCode();
+        return httpInputMessage.getStatusCode();
     }
 
     /**
      * Return the HTTP status text.
      */
-    public String getStatusText() {
-        return httpClientResponse.statusMessage();
+    public String getStatusMessage() {
+        return httpInputMessage.getStatusMessage();
     }
 
     /**
@@ -75,7 +77,7 @@ public abstract class HttpStatusCodeException extends RestClientException {
      * @since 3.1.2
      */
     public MultiMap getResponseHeaders() {
-        return httpClientResponse.headers();
+        return httpInputMessage.getHeaders();
     }
 
     /**
@@ -84,7 +86,10 @@ public abstract class HttpStatusCodeException extends RestClientException {
      * @since 3.0.5
      */
     public byte[] getResponseBodyAsByteArray() {
-        return this.responseBody;
+        final ByteBuf bodyByteBuf = httpInputMessage.getBody();
+        final byte[] bytes = new byte[bodyByteBuf.readableBytes()];
+        bodyByteBuf.readBytes(bytes);
+        return bytes;
     }
 
     /**
@@ -93,7 +98,7 @@ public abstract class HttpStatusCodeException extends RestClientException {
      * @since 3.0.5
      */
     public <T> RestClientResponse<T> getResponseBody(Class<T> clazz) {
-        return new DefaultRestClientResponse<>(httpMessageConverters, clazz, responseBody, httpClientResponse, null);
+        return new DefaultRestClientResponse<>(httpMessageConverters, clazz, httpInputMessage, streamBase, null);
     }
 
     /**
@@ -102,7 +107,10 @@ public abstract class HttpStatusCodeException extends RestClientException {
      * @since 3.0.5
      */
     public String getResponseBodyAsString() {
-        final String contentEncoding = httpClientResponse.headers().get(HttpHeaders.CONTENT_ENCODING);
-        return new String(this.responseBody, contentEncoding != null ? Charset.forName(contentEncoding) : Charset.forName(DEFAULT_CHARSET));
+        final ByteBuf bodyByteBuf = httpInputMessage.getBody();
+        final String contentEncoding = httpInputMessage.getHeaders().get(HttpHeaders.CONTENT_ENCODING);
+        byte[] bytes = new byte[bodyByteBuf.readableBytes()];
+        bodyByteBuf.readBytes(bytes);
+        return new String(bytes, contentEncoding != null ? Charset.forName(contentEncoding) : Charset.forName(DEFAULT_CHARSET));
     }
 }

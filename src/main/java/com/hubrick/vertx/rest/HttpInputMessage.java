@@ -15,6 +15,10 @@
  */
 package com.hubrick.vertx.rest;
 
+import io.vertx.core.MultiMap;
+
+import java.util.List;
+
 /**
  * @author Emir Dizdarevic
  * @since 1.3.0
@@ -22,9 +26,26 @@ package com.hubrick.vertx.rest;
 public interface HttpInputMessage extends HttpMessage {
 
     /**
-     * The HTTP body
-     * 
-     * @return byte array holding the HTTP body
+     * Return the trailers of this message.
+     * @return a corresponding HttpHeaders object
      */
-    byte[] getBody();
+    MultiMap getTrailers();
+
+    /**
+     * Return the http status message
+     * @return http status message
+     */
+    String getStatusMessage();
+
+    /**
+     * Return the http status code
+     * @return http status message
+     */
+    Integer getStatusCode();
+
+    /**
+     * Return the cookies
+     * @return cookies
+     */
+    List<String> getCookies();
 }

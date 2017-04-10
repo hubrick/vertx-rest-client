@@ -21,36 +21,36 @@ import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import io.netty.buffer.Unpooled;
 
+import java.nio.ByteBuffer;
+
 /**
  * Passthrough HttpMessageConverter.
  *
  * @author Emir Dizdarevic
- * @since 1.3.0
+ * @since 2.2.0
  */
-public class ByteArrayHttpMessageConverter extends AbstractHttpMessageConverter<byte[]> {
+public class ByteBufferHttpMessageConverter extends AbstractHttpMessageConverter<ByteBuffer> {
 
-    public ByteArrayHttpMessageConverter() {
+    public ByteBufferHttpMessageConverter() {
         super(new MediaType("application", "octet-stream"), MediaType.ALL);
     }
 
     @Override
     public boolean supports(Class<?> clazz) {
-        return byte[].class.isAssignableFrom(clazz);
+        return ByteBuffer.class.isAssignableFrom(clazz);
     }
 
     @Override
-    protected byte[] readInternal(Class<? extends byte[]> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
+    protected ByteBuffer readInternal(Class<? extends ByteBuffer> clazz, HttpInputMessage httpInputMessage) throws HttpMessageConverterException {
         try {
-            byte[] bytes = new byte[httpInputMessage.getBody().readableBytes()];
-            httpInputMessage.getBody().readBytes(bytes);
-            return bytes;
+            return httpInputMessage.getBody().nioBuffer().asReadOnlyBuffer();
         } catch (Exception e) {
             throw new HttpMessageConverterException("Read of http body failed", e);
         }
     }
 
     @Override
-    protected void writeInternal(byte[] object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
+    protected void writeInternal(ByteBuffer object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
             httpOutputMessage.write(Unpooled.wrappedBuffer(object));
         } catch (Exception e) {

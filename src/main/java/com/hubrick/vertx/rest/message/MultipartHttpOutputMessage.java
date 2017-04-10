@@ -17,12 +17,13 @@ package com.hubrick.vertx.rest.message;
 
 import com.google.common.base.Charsets;
 import com.hubrick.vertx.rest.HttpOutputMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Map;
 
 /**
@@ -32,7 +33,7 @@ import java.util.Map;
 public class MultipartHttpOutputMessage implements HttpOutputMessage {
 
     private MultiMap headers = new CaseInsensitiveHeaders();
-    private final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private final CompositeByteBuf byteBuf = Unpooled.compositeBuffer(32);
     private boolean headersWritten = false;
 
     @Override
@@ -41,36 +42,40 @@ public class MultipartHttpOutputMessage implements HttpOutputMessage {
     }
 
     @Override
-    public void write(byte[] data) throws IOException {
+    public void write(ByteBuf data) throws IOException {
         writeHeaders();
-        byteArrayOutputStream.write(data);
+        byteBuf.addComponent(data).writerIndex(byteBuf.writerIndex() + data.writerIndex());
+    }
+
+    @Override
+    public ByteBuf getBody() {
+        byteBuf.resetReaderIndex();
+        return Unpooled.unmodifiableBuffer(byteBuf);
     }
 
     private void writeHeaders() throws IOException {
+        final ByteBuf headersBuf = Unpooled.directBuffer();
         if (!this.headersWritten) {
             for (String name : headers.names()) {
                 byte[] headerName = name.getBytes(Charsets.US_ASCII);
                 for (String headerValueString : headers.getAll(name)) {
                     byte[] headerValue = headerValueString.getBytes(Charsets.US_ASCII);
-                    byteArrayOutputStream.write(headerName);
-                    byteArrayOutputStream.write(':');
-                    byteArrayOutputStream.write(' ');
-                    byteArrayOutputStream.write(headerValue);
-                    writeNewLine(byteArrayOutputStream);
+                    headersBuf.writeBytes(headerName);
+                    headersBuf.writeChar(':');
+                    headersBuf.writeChar(' ');
+                    headersBuf.writeBytes(headerValue);
+                    writeNewLine(headersBuf);
                 }
             }
-            writeNewLine(byteArrayOutputStream);
+            writeNewLine(headersBuf);
+            byteBuf.addComponent(headersBuf).writerIndex(byteBuf.writerIndex() + headersBuf.writerIndex());
             this.headersWritten = true;
         }
     }
 
-    private static void writeNewLine(OutputStream os) throws IOException {
-        os.write('\r');
-        os.write('\n');
-    }
-
-    public byte[] getBody() {
-        return byteArrayOutputStream.toByteArray();
+    private static void writeNewLine(ByteBuf byteBuf) throws IOException {
+        byteBuf.writeChar('\r');
+        byteBuf.writeChar('\n');
     }
 
     public void putAllHeaders(MultiMap headers) {

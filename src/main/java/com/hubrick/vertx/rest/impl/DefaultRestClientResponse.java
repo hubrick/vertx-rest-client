@@ -15,16 +15,16 @@
  */
 package com.hubrick.vertx.rest.impl;
 
+import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.exception.RestClientException;
-import com.hubrick.vertx.rest.message.BufferedHttpInputMessage;
+import io.netty.buffer.ByteBuf;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.net.NetSocket;
+import io.vertx.core.streams.StreamBase;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -42,68 +42,63 @@ public class DefaultRestClientResponse<T> implements RestClientResponse<T> {
 
     private final List<HttpMessageConverter> httpMessageConverters;
     private final Class<T> clazz;
-    private final byte[] body;
-    private final HttpClientResponse httpClientResponse;
+    private final HttpInputMessage httpInputMessage;
+    private final StreamBase streamBase;
     private Handler<Throwable> exceptionHandler;
 
     public DefaultRestClientResponse(List<HttpMessageConverter> httpMessageConverters,
                                      Class<T> clazz,
-                                     byte[] body,
-                                     HttpClientResponse httpClientResponse,
+                                     HttpInputMessage httpInputMessage,
+                                     StreamBase streamBase,
                                      @Nullable Handler<Throwable> exceptionHandler) {
         checkNotNull(httpMessageConverters, "dataMappers must not be null");
         checkArgument(!httpMessageConverters.isEmpty(), "dataMappers must not be empty");
         checkNotNull(clazz, "clazz must not be null");
-        checkNotNull(body, "body must not be null");
-        checkNotNull(httpClientResponse, "httpClientResponse must not be null");
+        checkNotNull(httpInputMessage, "httpInputMessage must not be null");
+        checkNotNull(streamBase, "streamBase must not be null");
 
         this.httpMessageConverters = httpMessageConverters;
         this.clazz = clazz;
-        this.body = body;
-        this.httpClientResponse = httpClientResponse;
+        this.httpInputMessage = httpInputMessage;
+        this.streamBase = streamBase;
         this.exceptionHandler = exceptionHandler;
     }
 
     @Override
     public int statusCode() {
-        return httpClientResponse.statusCode();
+        return httpInputMessage.getStatusCode();
     }
 
     @Override
     public String statusMessage() {
-        return httpClientResponse.statusMessage();
+        return httpInputMessage.getStatusMessage();
     }
 
     @Override
     public MultiMap headers() {
-        return httpClientResponse.headers();
+        return httpInputMessage.getHeaders();
     }
 
     @Override
     public MultiMap trailers() {
-        return httpClientResponse.trailers();
+        return httpInputMessage.getTrailers();
     }
 
     @Override
     public List<String> cookies() {
-        return httpClientResponse.cookies();
-    }
-
-    @Override
-    public NetSocket netSocket() {
-        return httpClientResponse.netSocket();
+        return httpInputMessage.getCookies();
     }
 
     @Override
     public T getBody() {
-        if(body.length == 0 || Void.class.isAssignableFrom(clazz)) return null;
+        final ByteBuf byteBuf = httpInputMessage.getBody();
+        if(byteBuf.readableBytes() == 0 || Void.class.isAssignableFrom(clazz)) return null;
 
         try {
             final MediaType mediaType = MediaType.parseMediaType(headers().get(HttpHeaders.CONTENT_TYPE));
             for (HttpMessageConverter httpMessageConverter : httpMessageConverters) {
                 if (httpMessageConverter.canRead(clazz, mediaType)) {
-                    final BufferedHttpInputMessage bufferedHttpInputMessage = new BufferedHttpInputMessage(body, httpClientResponse.headers());
-                    return (T) httpMessageConverter.read(clazz, bufferedHttpInputMessage);
+                    return (T) httpMessageConverter.read(clazz, httpInputMessage);
                 }
             }
 
@@ -121,6 +116,6 @@ public class DefaultRestClientResponse<T> implements RestClientResponse<T> {
     @Override
     public void exceptionHandler(Handler<Throwable> exceptionHandler) {
         this.exceptionHandler = exceptionHandler;
-        httpClientResponse.exceptionHandler(exceptionHandler);
+        streamBase.exceptionHandler(exceptionHandler);
     }
 }

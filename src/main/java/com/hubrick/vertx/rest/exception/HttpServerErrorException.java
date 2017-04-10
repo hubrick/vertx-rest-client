@@ -15,8 +15,9 @@
  */
 package com.hubrick.vertx.rest.exception;
 
+import com.hubrick.vertx.rest.HttpInputMessage;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
-import io.vertx.core.http.HttpClientResponse;
+import io.vertx.core.streams.StreamBase;
 
 import java.util.List;
 
@@ -30,7 +31,7 @@ public class HttpServerErrorException extends HttpStatusCodeException {
 
     private static final long serialVersionUID = -2915754006618138282L;
 
-    public HttpServerErrorException(HttpClientResponse httpClientResponse, List<HttpMessageConverter> httpMessageConverters, byte[] responseBody) {
-        super(httpClientResponse, httpMessageConverters, responseBody);
+    public HttpServerErrorException(StreamBase streamBase, HttpInputMessage httpInputMessage, List<HttpMessageConverter> httpMessageConverters) {
+        super(streamBase, httpInputMessage, httpMessageConverters);
     }
 }

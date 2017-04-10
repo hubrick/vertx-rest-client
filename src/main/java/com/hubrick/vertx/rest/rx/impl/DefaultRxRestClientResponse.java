@@ -18,7 +18,6 @@ package com.hubrick.vertx.rest.rx.impl;
 import com.hubrick.vertx.rest.RestClientResponse;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
-import io.vertx.core.net.NetSocket;
 
 import java.util.List;
 
@@ -62,11 +61,6 @@ public class DefaultRxRestClientResponse<T> implements RestClientResponse<T> {
     @Override
     public List<String> cookies() {
         return decorated.cookies();
-    }
-
-    @Override
-    public NetSocket netSocket() {
-        return decorated.netSocket();
     }
 
     @Override

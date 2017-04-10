@@ -23,6 +23,9 @@ import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.converter.model.Part;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import com.hubrick.vertx.rest.message.MultipartHttpOutputMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
+import io.netty.buffer.Unpooled;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpHeaders;
 import org.slf4j.Logger;
@@ -67,6 +70,8 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
         final StringHttpMessageConverter stringHttpMessageConverter = new StringHttpMessageConverter();
         stringHttpMessageConverter.setWriteAcceptCharset(false);
         this.partConverters.add(new ByteArrayHttpMessageConverter());
+        this.partConverters.add(new ByteBufHttpMessageConverter());
+        this.partConverters.add(new ByteBufferHttpMessageConverter());
         this.partConverters.add(stringHttpMessageConverter);
     }
 
@@ -177,8 +182,8 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
     }
 
     private void writeMultipart(Multimap<String, Part> parts, HttpOutputMessage httpOutputMessage) throws IOException {
-        String boundary = generateMultipartBoundary();
-        Map<String, String> parameters = Collections.singletonMap("boundary", boundary);
+        final String boundary = generateMultipartBoundary();
+        final Map<String, String> parameters = Collections.singletonMap("boundary", boundary);
 
         final MediaType contentType = new MediaType(MediaType.MULTIPART_FORM_DATA, parameters);
         httpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_TYPE, contentType.toString());
@@ -189,34 +194,50 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
 
     private void writeParts(HttpOutputMessage httpOutputMessage, Multimap<String, Part> parts, String boundary) throws IOException {
         for (Map.Entry<String, Part> entry : parts.entries()) {
+            final CompositeByteBuf compositeByteBuf = Unpooled.compositeBuffer();
             String name = entry.getKey();
             if (entry.getValue() != null) {
-                writeBoundary(httpOutputMessage, boundary);
-                writePart(name, entry.getValue(), httpOutputMessage);
-                writeNewLine(httpOutputMessage);
+                final ByteBuf boundaryByteBub = writeBoundary(boundary);
+                final ByteBuf partByteBuf = writePart(name, entry.getValue());
+                final ByteBuf newLineByteBuf = writeNewLine();
+                compositeByteBuf.addComponent(boundaryByteBub).writerIndex(compositeByteBuf.writerIndex() + boundaryByteBub.writerIndex());
+                compositeByteBuf.addComponent(partByteBuf).writerIndex(compositeByteBuf.writerIndex() + partByteBuf.writerIndex());
+                compositeByteBuf.addComponent(newLineByteBuf).writerIndex(compositeByteBuf.writerIndex() + newLineByteBuf.writerIndex());
+                httpOutputMessage.write(compositeByteBuf);
             }
         }
     }
 
-    private void writeBoundary(HttpOutputMessage httpOutputMessage, String boundary) throws IOException {
-        httpOutputMessage.write("--".getBytes());
-        httpOutputMessage.write(boundary.getBytes());
-        writeNewLine(httpOutputMessage);
+    private ByteBuf writeBoundary(String boundary) throws IOException {
+        final ByteBuf byteBuf = Unpooled.directBuffer();
+        byteBuf.writeBytes("--".getBytes());
+        byteBuf.writeBytes(boundary.getBytes());
+        writeNewLine(byteBuf);
+        return byteBuf;
     }
 
     private void writeEnd(HttpOutputMessage httpOutputMessage, String boundary) throws IOException {
-        httpOutputMessage.write("--".getBytes());
-        httpOutputMessage.write(boundary.getBytes());
-        httpOutputMessage.write("--".getBytes());
-        writeNewLine(httpOutputMessage);
+        final ByteBuf byteBuf = Unpooled.directBuffer();
+        byteBuf.writeBytes("--".getBytes());
+        byteBuf.writeBytes(boundary.getBytes());
+        byteBuf.writeBytes("--".getBytes());
+        writeNewLine(byteBuf);
+
+        httpOutputMessage.write(byteBuf);
     }
 
-    private void writeNewLine(HttpOutputMessage httpOutputMessage) throws IOException {
-        httpOutputMessage.write("\r\n".getBytes());
+    private void writeNewLine(ByteBuf byteBuf) throws IOException {
+        byteBuf.writeBytes("\r\n".getBytes());
+    }
+
+    private ByteBuf writeNewLine() throws IOException {
+        final ByteBuf byteBuf = Unpooled.directBuffer();
+        writeNewLine(byteBuf);
+        return byteBuf;
     }
 
     @SuppressWarnings("unchecked")
-    private void writePart(String name, Part part, HttpOutputMessage httpOutputMessage) throws IOException {
+    private ByteBuf writePart(String name, Part part) throws IOException {
         final Object partBody = part.getObject();
         final Class<?> partType = partBody.getClass();
         final MultiMap partHeaders = part.getHeaders();
@@ -236,8 +257,7 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
                     multipartHttpOutputMessage.putAllHeaders(partHeaders);
                 }
                 messageConverter.write(partBody, partContentType, multipartHttpOutputMessage);
-                httpOutputMessage.write(multipartHttpOutputMessage.getBody());
-                return;
+                return multipartHttpOutputMessage.getBody();
             }
         }
         throw new HttpMessageConverterException("Could not write request: no suitable HttpMessageConverter " +

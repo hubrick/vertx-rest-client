@@ -15,6 +15,7 @@
  */
 package com.hubrick.vertx.rest;
 
+import io.netty.buffer.ByteBuf;
 import io.vertx.core.MultiMap;
 
 /**
@@ -22,6 +23,13 @@ import io.vertx.core.MultiMap;
  * @since 1.3.0
  */
 public interface HttpMessage {
+
+    /**
+     * The HTTP body
+     *
+     * @return byte array holding the HTTP body
+     */
+    ByteBuf getBody();
 
     /**
      * Return the headers of this message.

@@ -16,7 +16,14 @@
 package com.hubrick.vertx.rest.message;
 
 import com.hubrick.vertx.rest.HttpInputMessage;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.vertx.core.MultiMap;
+
+import java.util.Collections;
+import java.util.List;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * @author Emir Dizdarevic
@@ -24,21 +31,55 @@ import io.vertx.core.MultiMap;
  */
 public class BufferedHttpInputMessage implements HttpInputMessage {
 
-    private final byte[] data;
+    private final ByteBuf data;
     private final MultiMap headers;
+    private final MultiMap trailers;
+    private final String statusMessage;
+    private final Integer statusCode;
+    private final List<String> cookies;
 
-    public BufferedHttpInputMessage(byte[] data, MultiMap headers) {
+    public BufferedHttpInputMessage(ByteBuf data, MultiMap headers, MultiMap trailers, String statusMessage, Integer statusCode, List<String> cookies) {
+        checkNotNull(data, "data must not be null");
+        checkNotNull(headers, "headers must not be null");
+        checkNotNull(statusMessage, "statusMessage must not be null");
+        checkNotNull(statusCode, "statusCode must not be null");
+
         this.data = data;
         this.headers = headers;
+        this.trailers = trailers == null ? MultiMap.caseInsensitiveMultiMap() : trailers;
+        this.statusMessage = statusMessage;
+        this.statusCode = statusCode;
+        this.cookies = cookies == null ? Collections.emptyList() : cookies;
     }
 
     @Override
-    public byte[] getBody() {
-        return data;
+    public ByteBuf getBody() {
+        data.resetReaderIndex();
+        return Unpooled.unmodifiableBuffer(data);
     }
 
     @Override
     public MultiMap getHeaders() {
         return headers;
+    }
+
+    @Override
+    public MultiMap getTrailers() {
+        return trailers;
+    }
+
+    @Override
+    public String getStatusMessage() {
+        return statusMessage;
+    }
+
+    @Override
+    public Integer getStatusCode() {
+        return statusCode;
+    }
+
+    @Override
+    public List<String> getCookies() {
+        return cookies;
     }
 }
