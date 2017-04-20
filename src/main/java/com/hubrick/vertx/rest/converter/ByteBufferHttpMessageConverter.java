@@ -52,7 +52,7 @@ public class ByteBufferHttpMessageConverter extends AbstractHttpMessageConverter
     @Override
     protected void writeInternal(ByteBuffer object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            httpOutputMessage.write(Unpooled.wrappedBuffer(object));
+            httpOutputMessage.write(Unpooled.unmodifiableBuffer(Unpooled.wrappedBuffer(object)));
         } catch (Exception e) {
             throw new HttpMessageConverterException("Writing of http body failed", e);
         }

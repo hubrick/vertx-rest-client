@@ -24,7 +24,6 @@ import com.hubrick.vertx.rest.converter.model.Part;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import com.hubrick.vertx.rest.message.MultipartHttpOutputMessage;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.vertx.core.MultiMap;
 import io.vertx.core.http.HttpHeaders;
@@ -50,6 +49,9 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
 
     private static final Logger log = LoggerFactory.getLogger(MultipartHttpMessageConverter.class);
 
+    private static final byte[] NEW_LINE = "\r\n".getBytes(Charsets.US_ASCII);
+    private static final byte[] TWO_DASHES = "--".getBytes(Charsets.US_ASCII);
+
     private static final String CONTENT_DISPOSITION = "Content-Disposition";
     private static final byte[] BOUNDARY_CHARS =
             new byte[]{'-', '_', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
@@ -70,8 +72,8 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
         final StringHttpMessageConverter stringHttpMessageConverter = new StringHttpMessageConverter();
         stringHttpMessageConverter.setWriteAcceptCharset(false);
         this.partConverters.add(new ByteArrayHttpMessageConverter());
-        this.partConverters.add(new ByteBufHttpMessageConverter());
         this.partConverters.add(new ByteBufferHttpMessageConverter());
+        this.partConverters.add(new ByteBufHttpMessageConverter());
         this.partConverters.add(stringHttpMessageConverter);
     }
 
@@ -194,50 +196,34 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
 
     private void writeParts(HttpOutputMessage httpOutputMessage, Multimap<String, Part> parts, String boundary) throws IOException {
         for (Map.Entry<String, Part> entry : parts.entries()) {
-            final CompositeByteBuf compositeByteBuf = Unpooled.compositeBuffer();
             String name = entry.getKey();
             if (entry.getValue() != null) {
-                final ByteBuf boundaryByteBub = writeBoundary(boundary);
-                final ByteBuf partByteBuf = writePart(name, entry.getValue());
-                final ByteBuf newLineByteBuf = writeNewLine();
-                compositeByteBuf.addComponent(boundaryByteBub).writerIndex(compositeByteBuf.writerIndex() + boundaryByteBub.writerIndex());
-                compositeByteBuf.addComponent(partByteBuf).writerIndex(compositeByteBuf.writerIndex() + partByteBuf.writerIndex());
-                compositeByteBuf.addComponent(newLineByteBuf).writerIndex(compositeByteBuf.writerIndex() + newLineByteBuf.writerIndex());
-                httpOutputMessage.write(compositeByteBuf);
+                writeBoundary(httpOutputMessage, boundary);
+                writePart(name, entry.getValue(), httpOutputMessage);
+                httpOutputMessage.write(Unpooled.unmodifiableBuffer(Unpooled.wrappedBuffer(NEW_LINE)));
             }
         }
     }
 
-    private ByteBuf writeBoundary(String boundary) throws IOException {
-        final ByteBuf byteBuf = Unpooled.directBuffer();
-        byteBuf.writeBytes("--".getBytes());
-        byteBuf.writeBytes(boundary.getBytes());
-        writeNewLine(byteBuf);
-        return byteBuf;
+    private void writeBoundary(HttpOutputMessage httpOutputMessage, String boundary) throws IOException {
+        final ByteBuf byteBuf = Unpooled.buffer(64);
+        byteBuf.writeBytes(TWO_DASHES);
+        byteBuf.writeBytes(boundary.getBytes(Charsets.US_ASCII));
+        byteBuf.writeBytes(NEW_LINE);
+        httpOutputMessage.write(Unpooled.unmodifiableBuffer(byteBuf));
     }
 
     private void writeEnd(HttpOutputMessage httpOutputMessage, String boundary) throws IOException {
-        final ByteBuf byteBuf = Unpooled.directBuffer();
-        byteBuf.writeBytes("--".getBytes());
-        byteBuf.writeBytes(boundary.getBytes());
-        byteBuf.writeBytes("--".getBytes());
-        writeNewLine(byteBuf);
-
-        httpOutputMessage.write(byteBuf);
-    }
-
-    private void writeNewLine(ByteBuf byteBuf) throws IOException {
-        byteBuf.writeBytes("\r\n".getBytes());
-    }
-
-    private ByteBuf writeNewLine() throws IOException {
-        final ByteBuf byteBuf = Unpooled.directBuffer();
-        writeNewLine(byteBuf);
-        return byteBuf;
+        final ByteBuf byteBuf = Unpooled.buffer(64);
+        byteBuf.writeBytes(TWO_DASHES);
+        byteBuf.writeBytes(boundary.getBytes(Charsets.US_ASCII));
+        byteBuf.writeBytes(TWO_DASHES);
+        byteBuf.writeBytes(NEW_LINE);
+        httpOutputMessage.write(Unpooled.unmodifiableBuffer(byteBuf));
     }
 
     @SuppressWarnings("unchecked")
-    private ByteBuf writePart(String name, Part part) throws IOException {
+    private void writePart(String name, Part part, HttpOutputMessage httpOutputMessage) throws IOException {
         final Object partBody = part.getObject();
         final Class<?> partType = partBody.getClass();
         final MultiMap partHeaders = part.getHeaders();
@@ -257,7 +243,8 @@ public class MultipartHttpMessageConverter implements HttpMessageConverter<Multi
                     multipartHttpOutputMessage.putAllHeaders(partHeaders);
                 }
                 messageConverter.write(partBody, partContentType, multipartHttpOutputMessage);
-                return multipartHttpOutputMessage.getBody();
+                httpOutputMessage.write(multipartHttpOutputMessage.getBody());
+                return;
             }
         }
         throw new HttpMessageConverterException("Could not write request: no suitable HttpMessageConverter " +

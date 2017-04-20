@@ -20,6 +20,7 @@ import com.hubrick.vertx.rest.HttpOutputMessage;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.exception.HttpMessageConverterException;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 /**
  * Passthrough HttpMessageConverter.
@@ -50,7 +51,7 @@ public class ByteBufHttpMessageConverter extends AbstractHttpMessageConverter<By
     @Override
     protected void writeInternal(ByteBuf object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            httpOutputMessage.write(object);
+            httpOutputMessage.write(Unpooled.unmodifiableBuffer(object));
         } catch (Exception e) {
             throw new HttpMessageConverterException("Writing of http body failed", e);
         }

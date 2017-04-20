@@ -46,7 +46,6 @@ public class BufferedHttpOutputMessage implements HttpOutputMessage {
 
     @Override
     public ByteBuf getBody() {
-        byteBuf.resetReaderIndex();
         return Unpooled.unmodifiableBuffer(byteBuf);
     }
 

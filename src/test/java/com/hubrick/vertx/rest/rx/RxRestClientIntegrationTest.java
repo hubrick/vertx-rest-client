@@ -16,18 +16,24 @@
 package com.hubrick.vertx.rest.rx;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Charsets;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
 import com.hubrick.vertx.rest.AbstractFunctionalTest;
+import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RequestCacheOptions;
 import com.hubrick.vertx.rest.RestClientOptions;
 import com.hubrick.vertx.rest.RestClientResponse;
-import com.hubrick.vertx.rest.VertxMatcherAssert;
 import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
+import com.hubrick.vertx.rest.converter.MultipartHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
+import com.hubrick.vertx.rest.converter.model.Part;
+import io.vertx.core.MultiMap;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import org.apache.commons.fileupload.MultipartStream;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockserver.model.Header;
@@ -35,6 +41,9 @@ import org.mockserver.model.HttpRequest;
 import rx.Observable;
 import rx.functions.Func0;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -43,7 +52,11 @@ import java.util.UUID;
 
 import static com.google.common.io.Resources.getResource;
 import static com.google.common.io.Resources.toByteArray;
+import static com.hubrick.vertx.rest.VertxMatcherAssert.assertThat;
+import static net.javacrumbs.jsonunit.JsonMatchers.jsonEquals;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isIn;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
@@ -74,6 +87,78 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                 )
         );
     }
+
+    @Test
+    public void testMultipart(TestContext testContext) throws Exception {
+        final HttpRequest multipartHttpRequest = request()
+                .withMethod("POST")
+                .withPath("/api/v1/images")
+                .withHeader(Header.header("Content-Type", "multipart/form-data.*"));
+        getMockServerClient().when(
+                multipartHttpRequest
+        ).respond(
+                response()
+                        .withStatusCode(200)
+        );
+
+        final RestClientOptions clientOptions = new RestClientOptions();
+        clientOptions.setDefaultHost("localhost");
+        clientOptions.setDefaultPort(MOCKSERVER_PORT);
+        clientOptions.setMaxPoolSize(10);
+
+        final MultipartHttpMessageConverter multipartHttpMessageConverter = new MultipartHttpMessageConverter();
+        multipartHttpMessageConverter.addPartConverter(new JacksonJsonHttpMessageConverter(new ObjectMapper()));
+
+        final RxRestClient rxRestClient = RxRestClient.create(
+                vertx,
+                clientOptions,
+                ImmutableList.of(multipartHttpMessageConverter)
+        );
+
+        final HashMultimap<String, Part> parts = HashMultimap.create();
+        parts.put("image", new Part(ByteBuffer.wrap(loadFile("test.gif")), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+        parts.put("request", new Part(new ConvertRequest("caption"), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "application/json")));
+
+        final Async async = testContext.async();
+        rxRestClient.post("/api/v1/images", restClientRequest -> {
+            restClientRequest.setContentType(MediaType.MULTIPART_FORM_DATA);
+            restClientRequest.end(parts);
+        }).subscribe(
+                restClientResponse -> {
+                    try {
+                        assertThat(testContext, restClientResponse.statusCode(), is(200));
+
+                        final HttpRequest[] requests = getMockServerClient().retrieveRecordedRequests(multipartHttpRequest);
+                        assertThat(testContext, Arrays.asList(requests), hasSize(1));
+
+                        final ByteArrayInputStream content = new ByteArrayInputStream(requests[0].getBodyAsRawBytes());
+                        final MultipartStream multipartStream = new MultipartStream(content, getMultipartBoundary(requests[0]));
+
+                        final ByteArrayOutputStream image = new ByteArrayOutputStream();
+                        final ByteArrayOutputStream request = new ByteArrayOutputStream();
+
+                        final String imageHeaders = multipartStream.readHeaders();
+                        multipartStream.readBodyData(image);
+                        multipartStream.readBoundary();
+
+                        final String requestHeaders = multipartStream.readHeaders();
+                        multipartStream.readBodyData(request);
+                        multipartStream.readBoundary();
+
+                        assertThat(testContext, requestHeaders, containsString("Content-Type: application/json"));
+                        assertThat(testContext, imageHeaders, containsString("filename="));
+                        assertThat(testContext, image.toByteArray(), is(loadFile("test.gif")));
+                        assertThat(testContext, new String(request.toByteArray(), Charsets.UTF_8), jsonEquals("{\"caption\": \"caption\"}"));
+                    } catch (Exception e) {
+                        testContext.fail(e);
+                    }
+
+                },
+                testContext::fail,
+                () -> async.complete()
+        );
+    }
+
 
     @Test
     public void testSimpleRxFlow(TestContext testContext) throws Exception {
@@ -126,20 +211,20 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         );
 
         final Async async = testContext.async();
-        final Observable<RestClientResponse<UserSearchResponse[]>> response = rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, restClientRequest -> restClientRequest.end());
-        response.flatMap(userSearchResponseRestClientResponse -> {
-            final List<Observable<RestClientResponse<UserResponse>>> responses = new LinkedList<>();
-            for (UserSearchResponse userSearchResponse : userSearchResponseRestClientResponse.getBody()) {
-                final Observable<RestClientResponse<UserResponse>> userResponse = rxRestClient.get("/api/v1/users/" + userSearchResponse.getId(), UserResponse.class, restClientRequest -> restClientRequest.end());
-                responses.add(userResponse);
-            }
+        rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, restClientRequest -> restClientRequest.end())
+                .flatMap(userSearchResponseRestClientResponse -> {
+                    final List<Observable<RestClientResponse<UserResponse>>> responses = new LinkedList<>();
+                    for (UserSearchResponse userSearchResponse : userSearchResponseRestClientResponse.getBody()) {
+                        final Observable<RestClientResponse<UserResponse>> userResponse = rxRestClient.get("/api/v1/users/" + userSearchResponse.getId(), UserResponse.class, restClientRequest -> restClientRequest.end());
+                        responses.add(userResponse);
+                    }
 
-            return Observable.merge(responses);
-        }).subscribe(
+                    return Observable.merge(responses);
+                }).subscribe(
                 userResponseRestClientResponse -> {
                     final Set<UUID> ids = Sets.newHashSet(UUID.fromString("b9d8fb1a-38c5-45ea-a7ee-6450a964f4f8"), UUID.fromString("e5297618-c299-4157-a85c-4957c8204819"));
                     final UUID id = userResponseRestClientResponse.getBody().getId();
-                    VertxMatcherAssert.assertThat(testContext, id, isIn(ids));
+                    assertThat(testContext, id, isIn(ids));
                 },
                 testContext::fail,
                 () -> async.complete()
@@ -231,7 +316,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                         },
                         testContext::fail,
                         () -> {
-                            VertxMatcherAssert.assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
+                            assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
                             async.complete();
                         }
                 );
@@ -258,7 +343,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                         },
                         testContext::fail,
                         () -> {
-                            VertxMatcherAssert.assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
+                            assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
                             async.complete();
                         }
                 );
