@@ -30,6 +30,7 @@ import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.MultipartHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.model.Part;
+import io.netty.buffer.Unpooled;
 import io.vertx.core.MultiMap;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -89,7 +90,23 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
     }
 
     @Test
-    public void testMultipart(TestContext testContext) throws Exception {
+    public void testMultipartByteBuffer(TestContext testContext) throws Exception {
+        testMultipart(testContext, new Part(ByteBuffer.wrap(loadFile("test.gif")), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+    }
+
+    @Test
+    public void testMultipartByteBuf(TestContext testContext) throws Exception {
+        testMultipart(testContext, new Part(Unpooled.wrappedBuffer(loadFile("test.gif")), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+    }
+
+
+    @Test
+    public void testMultipartByteArray(TestContext testContext) throws Exception {
+        testMultipart(testContext, new Part(loadFile("test.gif"), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+    }
+
+
+    private void testMultipart(TestContext testContext, Part imagePart) throws Exception {
         final HttpRequest multipartHttpRequest = request()
                 .withMethod("POST")
                 .withPath("/api/v1/images")
@@ -116,7 +133,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         );
 
         final HashMultimap<String, Part> parts = HashMultimap.create();
-        parts.put("image", new Part(ByteBuffer.wrap(loadFile("test.gif")), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+        parts.put("image", imagePart);
         parts.put("request", new Part(new ConvertRequest("caption"), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "application/json")));
 
         final Async async = testContext.async();
@@ -158,7 +175,6 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                 () -> async.complete()
         );
     }
-
 
     @Test
     public void testSimpleRxFlow(TestContext testContext) throws Exception {
