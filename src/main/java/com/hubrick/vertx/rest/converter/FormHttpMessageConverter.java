@@ -136,7 +136,7 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
             charset = this.charset;
         }
 
-        final ByteBuf bodyByteBuf = Unpooled.directBuffer();
+        final ByteBuf bodyByteBuf = Unpooled.buffer(128);
         for (Iterator<String> nameIterator = form.keySet().iterator(); nameIterator.hasNext(); ) {
             String name = nameIterator.next();
             for (Iterator<Object> valueIterator = form.get(name).iterator(); valueIterator.hasNext(); ) {
@@ -156,6 +156,6 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
         }
 
         httpOutputMessage.getHeaders().set(HttpHeaders.CONTENT_LENGTH, String.valueOf(bodyByteBuf.readableBytes()));
-        httpOutputMessage.write(bodyByteBuf);
+        httpOutputMessage.write(Unpooled.unmodifiableBuffer(bodyByteBuf));
     }
 }

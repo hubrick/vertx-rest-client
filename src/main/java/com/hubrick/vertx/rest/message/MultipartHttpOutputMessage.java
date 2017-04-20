@@ -24,6 +24,7 @@ import io.vertx.core.MultiMap;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Map;
 
 /**
@@ -32,7 +33,12 @@ import java.util.Map;
  */
 public class MultipartHttpOutputMessage implements HttpOutputMessage {
 
-    private MultiMap headers = new CaseInsensitiveHeaders();
+    private static final Charset multipartCharset = Charsets.US_ASCII;
+    private static final byte[] NEW_LINE = "\r\n".getBytes(multipartCharset);
+    private static final byte[] COLON = ":".getBytes(multipartCharset);
+    private static final byte[] SPACE = " ".getBytes(multipartCharset);
+
+    private final MultiMap headers = new CaseInsensitiveHeaders();
     private final CompositeByteBuf byteBuf = Unpooled.compositeBuffer(32);
     private boolean headersWritten = false;
 
@@ -47,35 +53,29 @@ public class MultipartHttpOutputMessage implements HttpOutputMessage {
         byteBuf.addComponent(data).writerIndex(byteBuf.writerIndex() + data.writerIndex());
     }
 
-    @Override
-    public ByteBuf getBody() {
-        byteBuf.resetReaderIndex();
-        return Unpooled.unmodifiableBuffer(byteBuf);
-    }
-
     private void writeHeaders() throws IOException {
-        final ByteBuf headersBuf = Unpooled.directBuffer();
         if (!this.headersWritten) {
+            final ByteBuf headersBuf = Unpooled.buffer(1024);    // Header size guess
             for (String name : headers.names()) {
-                byte[] headerName = name.getBytes(Charsets.US_ASCII);
+                byte[] headerName = name.getBytes(multipartCharset);
                 for (String headerValueString : headers.getAll(name)) {
-                    byte[] headerValue = headerValueString.getBytes(Charsets.US_ASCII);
+                    byte[] headerValue = headerValueString.getBytes(multipartCharset);
                     headersBuf.writeBytes(headerName);
-                    headersBuf.writeChar(':');
-                    headersBuf.writeChar(' ');
+                    headersBuf.writeBytes(COLON);
+                    headersBuf.writeBytes(SPACE);
                     headersBuf.writeBytes(headerValue);
-                    writeNewLine(headersBuf);
+                    headersBuf.writeBytes(NEW_LINE);
                 }
             }
-            writeNewLine(headersBuf);
+            headersBuf.writeBytes(NEW_LINE);
             byteBuf.addComponent(headersBuf).writerIndex(byteBuf.writerIndex() + headersBuf.writerIndex());
             this.headersWritten = true;
         }
     }
 
-    private static void writeNewLine(ByteBuf byteBuf) throws IOException {
-        byteBuf.writeChar('\r');
-        byteBuf.writeChar('\n');
+    @Override
+    public ByteBuf getBody() {
+        return Unpooled.unmodifiableBuffer(byteBuf);
     }
 
     public void putAllHeaders(MultiMap headers) {

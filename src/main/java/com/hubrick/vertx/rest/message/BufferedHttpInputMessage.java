@@ -54,7 +54,6 @@ public class BufferedHttpInputMessage implements HttpInputMessage {
 
     @Override
     public ByteBuf getBody() {
-        data.resetReaderIndex();
         return Unpooled.unmodifiableBuffer(data);
     }
 

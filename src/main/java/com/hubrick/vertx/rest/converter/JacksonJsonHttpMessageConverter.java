@@ -133,7 +133,7 @@ public class JacksonJsonHttpMessageConverter<T extends Object> extends AbstractH
     @Override
     protected void writeInternal(T object, HttpOutputMessage httpOutputMessage) throws HttpMessageConverterException {
         try {
-            httpOutputMessage.write(Unpooled.wrappedBuffer(objectMapper.writeValueAsBytes(object)));
+            httpOutputMessage.write(Unpooled.unmodifiableBuffer(Unpooled.wrappedBuffer(objectMapper.writeValueAsBytes(object))));
         } catch (Exception e) {
             throw new HttpMessageConverterException("Error converting to json.", e);
         }

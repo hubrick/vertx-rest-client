@@ -22,7 +22,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.mockserver.client.server.MockServerClient;
+import org.mockserver.model.HttpRequest;
 
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static com.google.common.io.Resources.getResource;
+import static com.google.common.io.Resources.toByteArray;
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 
 /**
@@ -33,6 +40,8 @@ import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 public abstract class AbstractFunctionalTest {
 
     protected Vertx vertx;
+
+    private static final Pattern MULTIPART_BOUNDARY_PATTERN = Pattern.compile("multipart/form-data;boundary=(.*)");
 
     public static final int MOCKSERVER_PORT = 8089;
     private static MockServerClient mockServerClient = startClientAndServer(MOCKSERVER_PORT);
@@ -50,5 +59,20 @@ public abstract class AbstractFunctionalTest {
     @After
     public void after(TestContext context) {
         vertx.close(context.asyncAssertSuccess());
+    }
+
+    protected byte[] loadFile(String fileName) throws IOException {
+        return toByteArray(getResource(this.getClass(), fileName));
+    }
+
+    protected String loadFileAsString(String fileName) throws IOException {
+        return new String(toByteArray(getResource(this.getClass(), fileName)));
+    }
+
+    protected byte[] getMultipartBoundary(HttpRequest httpRequest) {
+        final String contentType = httpRequest.getFirstHeader("Content-Type");
+        final Matcher matcher = MULTIPART_BOUNDARY_PATTERN.matcher(contentType);
+        matcher.matches();
+        return matcher.group(1).getBytes();
     }
 }

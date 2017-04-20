@@ -84,7 +84,7 @@ public class StringHttpMessageConverter extends AbstractHttpMessageConverter<Str
                 httpOutputMessage.getHeaders().set(HttpHeaders.ACCEPT_CHARSET, Joiner.on(",").join(getAcceptedCharsets()));
             }
             final Charset charset = getContentTypeCharset(MediaType.parseMediaType(httpOutputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE)));
-            httpOutputMessage.write(Unpooled.wrappedBuffer(object.getBytes(charset)));
+            httpOutputMessage.write(Unpooled.unmodifiableBuffer(Unpooled.wrappedBuffer(object.getBytes(charset))));
         } catch (Exception e) {
             throw new HttpMessageConverterException("Failed to write http body", e);
         }
