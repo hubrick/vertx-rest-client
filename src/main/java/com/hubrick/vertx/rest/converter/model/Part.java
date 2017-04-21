@@ -16,7 +16,9 @@
 package com.hubrick.vertx.rest.converter.model;
 
 
+import com.hubrick.vertx.rest.MediaType;
 import io.vertx.core.MultiMap;
+import io.vertx.core.http.HttpHeaders;
 
 /**
  * @author Emir Dizdarevic
@@ -30,6 +32,10 @@ public class Part<T> {
 
     public Part(T object, MultiMap headers) {
         this(object, headers, null);
+    }
+
+    public Part(T object, String fileName) {
+        this(object, MultiMap.caseInsensitiveMultiMap(), fileName);
     }
 
     public Part(T object, MultiMap headers, String fileName) {
@@ -49,4 +55,24 @@ public class Part<T> {
     public String getFileName() {
         return fileName;
     }
+
+    /**
+     * Sets the Content-Type of this request.
+     *
+     * @param contentType The content type to set.
+     */
+    public Part<T> setContentType(MediaType contentType) {
+        headers.add(HttpHeaders.CONTENT_TYPE, contentType.toString());
+        return this;
+    }
+
+    /**
+     *
+     * @return The Content-Type if present otherwise null.
+     */
+    public MediaType getContentType() {
+        final String contentTypeString = headers.get(HttpHeaders.CONTENT_TYPE);
+        return contentTypeString != null ? MediaType.parseMediaType(contentTypeString) : null;
+    }
+
 }

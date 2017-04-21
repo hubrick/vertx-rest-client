@@ -91,20 +91,18 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
     @Test
     public void testMultipartByteBuffer(TestContext testContext) throws Exception {
-        testMultipart(testContext, new Part(ByteBuffer.wrap(loadFile("test.gif")), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+        testMultipart(testContext, new Part(ByteBuffer.wrap(loadFile("test.gif")), "test.gif").setContentType(MediaType.IMAGE_GIF));
     }
 
     @Test
     public void testMultipartByteBuf(TestContext testContext) throws Exception {
-        testMultipart(testContext, new Part(Unpooled.wrappedBuffer(loadFile("test.gif")), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+        testMultipart(testContext, new Part(Unpooled.wrappedBuffer(loadFile("test.gif")), "test.gif").setContentType(MediaType.IMAGE_GIF));
     }
-
 
     @Test
     public void testMultipartByteArray(TestContext testContext) throws Exception {
-        testMultipart(testContext, new Part(loadFile("test.gif"), MultiMap.caseInsensitiveMultiMap().add("Content-Type", "image/gif"), "test.gif"));
+        testMultipart(testContext, new Part(loadFile("test.gif"), "test.gif").setContentType(MediaType.IMAGE_GIF));
     }
-
 
     private void testMultipart(TestContext testContext, Part imagePart) throws Exception {
         final HttpRequest multipartHttpRequest = request()
