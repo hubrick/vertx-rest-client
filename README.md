@@ -8,43 +8,25 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 
 ## Compatibility
 - Java 8+
-- Vert.x 2.x.x
 - Vert.x 3.x.x
+
+ Vert.x version     | Library version
+ ------------------ | ----------------
+ 3.3.3              | 2.2.1
 
 ## Dependencies
 
-### Dependency Vert.x 3.x.x
+### Dependency
 ### Maven
 ```xml
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
-    <version>2.1.0</version>
+    <version>2.2.1</version>
 </dependency>
-```
-
-
-### Dependency Vert.x 2.x.x (Deprecated and not maintained anymore)
-### Maven
-```xml
-<dependency>
-    <groupId>com.hubrick.vertx</groupId>
-    <artifactId>vertx-rest-client</artifactId>
-    <version>1.3.3</version>
-    <scope>provided</scope>
-</dependency>
-```
-
-### Vert.x mod.json
-```json
-{
-    "includes": "com.hubrick.vertx~vertx-rest-client~1.3.3",
-}
 ```
 
 ## How to use
-
-### Vertx 3.x.x
 #### Simple example 
 
 ```java
@@ -126,51 +108,6 @@ public class ExampleVerticle extends Verticle {
                 // Handle exception
             }
         );
-    }
-}
-```
-### Vertx 2.x.x (Deprecated and not maintained anymore)
-#### Simple example 
-
-```java
-public class ExampleVerticle extends Verticle {
-
-    @Override
-    public void start() {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-            new FormHttpMessageConverter(), 
-            new StringHttpMessageConverter(), 
-            new JacksonJsonHttpMessageConverter(objectMapper)
-        );
-    
-        final RestClient restClient = new DefaultRestClient(vertx, httpMessageConverters)
-                                                          .setConnectTimeout(500)
-                                                          .setGlobalRequestTimeout(300)
-                                                          .setHost("example.com")
-                                                          .setPort(80)
-                                                          .setMaxPoolSize(500);
-                                     
-        // GET example
-        final RestClientRequest getRestClientRequest = restClient.get("/api/users/123", SomeReturnObject.class, getRestResponse -> {
-            final SomeReturnObject someReturnObject = getRestResponse.getBody();
-            // TODO: Handle response
-        });
-        getRestClientRequest.exceptionHandler(exception -> {
-            // TODO: Handle exception
-        });
-        getRestClientRequest.end();
-        
-        // POST example
-        final RestClientRequest postRestClientRequest = restClient.post("/api/users/123", SomeReturnObject.class, portRestResponse -> {
-            final SomeReturnObject someReturnObject = portRestResponse.getBody();
-            // TODO: Handle response
-        });
-        postRestClientRequest.exceptionHandler(exception -> {
-            // TODO: Handle exception
-        });
-        postRestClientRequest.setContentType(MediaType.TEXT_PLAIN);
-        postRestClientRequest.end("Some data");
     }
 }
 ```
