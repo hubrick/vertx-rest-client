@@ -112,43 +112,6 @@ public class ExampleVerticle extends Verticle {
 }
 ```
 
-#### RxJava example
-```java
-public class ExampleVerticle extends Verticle {
-
-    @Override
-    public void start() {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        final List<HttpMessageConverter> httpMessageConverters = ImmutableList.of(
-            new FormHttpMessageConverter(), 
-            new StringHttpMessageConverter(), 
-            new JacksonJsonHttpMessageConverter(objectMapper)
-        );
-    
-        final RestClient restClient = new DefaultRestClient(vertx, httpMessageConverters)
-                                                          .setConnectTimeout(500)
-                                                          .setGlobalRequestTimeout(300)
-                                                          .setHost("example.com")
-                                                          .setPort(80)
-                                                          .setMaxPoolSize(500);
-                                                          
-        final RxRestClient rxRestClient = new DefaultRxRestClient(restClient);
-                                     
-        // GET example
-        final Observable<RestClientResponse> getRestClientResponse = rxRestClient.get("/api/users/123", SomeReturnObject.class, restClientRequest -> restClientRequest.end());
-        getRestClientResponse.subscribe(
-            getRestClientResponse -> { 
-                // Handle response
-            },
-            error -> {
-                // Handle exception
-            }
-        );
-    }
-}
-```
-
-
 ### Request caching
 The request cache can be enabled by setting the RequestCacheOptions in the RestClientOptions or setting it on the RestClientRequest object itself which either enables caching on the whole client or per request. The intentation of this cache is to make RxJava flows simpler which means the same service can be called multiple times in the same RxJava flow without worrying that it will be really called multiple times. 
 
@@ -207,7 +170,9 @@ If you want to have a RestClient per Verticle (the desired way) set an exception
  FormHttpMessageConverter           | Url-encodes the params. Content-Type: application/x-www-form-urlencoded
  JacksonJsonHttpMessageConverter    | Encodes the object to JSON. Content-Type: application/json
  StringHttpMessageConverter         | Outputs the plain string in the desired charset. Content-Type: plain/text
- ByteArrayHttpMessageConverter      | Propagates the byte array to the http body. Activated by the presence of a byte[]. Content-Type: default application/octet-stream
+ ByteArrayHttpMessageConverter      | Propagates the byte array without copying it to the http body. Activated by the presence of a byte[]. Content-Type: default application/octet-stream
+ ByteBufHttpMessageConverter        | Propagates the ByteBuf without copying it to the http body. Activated by the presence of a ByteBuf. Content-Type: default application/octet-stream
+ ByteBufferHttpMessageConverter     | Propagates the ByteBuffer without copying it to the http body. Activated by the presence of a ByteBuffer. Content-Type: default application/octet-stream
  MultipartHttpMessageConverter      | Adds support for mutipart uploads. Content-Type: multipart/form-data
  
 ## Exceptions
