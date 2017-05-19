@@ -12,10 +12,10 @@ The handling of MimeTypes and HttpMessageConverters is taken directly from Sprin
 
  Vert.x version     | Library version
  ------------------ | ----------------
- 3.0.0              | 2.0.x
- 3.0.0              | 2.1.0
- 3.0.0              | 2.2.1
- 3.3.x              | 2.3.x
+ 3.0.0 - 3.3.3      | 2.0.x
+ 3.0.0 - 3.3.3      | 2.1.0
+ 3.0.0 - 3.3.3      | 2.2.1
+ 3.4.x              | 2.3.0
  
 ## Dependencies
 
