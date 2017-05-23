@@ -143,15 +143,15 @@ public class FormHttpMessageConverter implements HttpMessageConverter<Multimap<S
                 Object value = valueIterator.next();
                 bodyByteBuf.writeBytes(URLEncoder.encode(name, charset.name()).getBytes());
                 if (value != null) {
-                    bodyByteBuf.writeChar('=');
+                    bodyByteBuf.writeBytes("=".getBytes(charset));
                     bodyByteBuf.writeBytes(URLEncoder.encode(String.valueOf(value), charset.name()).getBytes());
                     if (valueIterator.hasNext()) {
-                        bodyByteBuf.writeChar('&');
+                        bodyByteBuf.writeBytes("&".getBytes(charset));
                     }
                 }
             }
             if (nameIterator.hasNext()) {
-                bodyByteBuf.writeChar('&');
+                bodyByteBuf.writeBytes("&".getBytes(charset));
             }
         }
 
