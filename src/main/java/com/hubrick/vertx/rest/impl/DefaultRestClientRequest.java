@@ -340,6 +340,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                         restClient.getRunningRequests().put(cacheKey, this);
                     } else {
                         log.debug("Cache MISS. Proceeding with request for key {}", cacheKey);
+                        exceptionHandler(createExceptionPropagatingHandler());
                         finishRequest(Optional.of(cacheKey));
                     }
                 }
@@ -354,6 +355,25 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
         } else {
             finishRequest(Optional.empty());
         }
+    }
+
+    private Handler<Throwable> createExceptionPropagatingHandler() {
+        final Handler<Throwable> originalExceptionHandler = this.exceptionHandler;
+        return (t) -> {
+            log.warn("Error on {}: {}, will propagate to all running requests for that uri", uri, t.getMessage(), t);
+            final RestClientRequestSlice<T> restClientRequestSlice = getRestClientRequestSlice();
+            for (DefaultRestClientRequest<T> entry : restClientRequestSlice.getRestClientRequestSlice()) {
+                vertx.runOnContext(aVoid -> {
+                    if (entry == this) {
+                        originalExceptionHandler.handle(t);
+                    } else if (entry.exceptionHandler != null && entry != this) {
+                        log.warn("Propagating error on {}: {} to running request: {}", uri, t.getMessage(), t, entry);
+                        entry.exceptionHandler.handle(t);
+                    }
+                });
+            }
+            restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestSlice.getRestClientRequestSlice());
+        };
     }
 
     private void handleResponse(HttpClientResponse httpClientResponse, Class clazz) {
@@ -372,7 +392,7 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
                         exception = new HttpClientErrorException(httpClientResponse, createHttpInputMessage(buffer.getByteBuf(), httpClientResponse), httpMessageConverters);
                         break;
                     case 5:
-                        exception = new HttpServerErrorException(httpClientResponse,  createHttpInputMessage(buffer.getByteBuf(), httpClientResponse), httpMessageConverters);
+                        exception = new HttpServerErrorException(httpClientResponse, createHttpInputMessage(buffer.getByteBuf(), httpClientResponse), httpMessageConverters);
                         break;
                 }
                 handleException(exception);
@@ -437,26 +457,11 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     }
 
     private void handleException(RuntimeException exception) {
-        if (HttpMethod.GET.equals(method) && requestCacheOptions != null) {
-            final RestClientRequestSlice<T> restClientRequestSlice = getRestClientRequestSlice();
-            for (DefaultRestClientRequest<T> entry : restClientRequestSlice.getRestClientRequestSlice()) {
-                vertx.runOnContext(aVoid -> {
-                    if (entry.exceptionHandler != null) {
-                        log.error("Http error. Handling exception", exception);
-                        entry.exceptionHandler.handle(exception);
-                    } else {
-                        throw exception;
-                    }
-                });
-            }
-            restClient.getRunningRequests().get(cacheKey).removeAll(restClientRequestSlice.getRestClientRequestSlice());
+        if (exceptionHandler != null) {
+            log.error("Http error. Handling exception", exception);
+            exceptionHandler.handle(exception);
         } else {
-            if (exceptionHandler != null) {
-                log.error("Http error. Handling exception", exception);
-                exceptionHandler.handle(exception);
-            } else {
-                throw exception;
-            }
+            throw exception;
         }
     }
 
