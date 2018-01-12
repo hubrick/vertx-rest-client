@@ -44,6 +44,7 @@ import rx.functions.Func0;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -78,6 +79,10 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         clientOptions.setMaxPoolSize(10);
         clientOptions.setGlobalRequestTimeout(1000000);
 
+        createAndSetClient(clientOptions);
+    }
+
+    private void createAndSetClient(final RestClientOptions clientOptions) {
         rxRestClient = RxRestClient.create(
                 vertx,
                 clientOptions,
@@ -256,6 +261,39 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
     }
 
     @Test
+    public void testRequestWithCache_UnknownHostError(TestContext testContext) throws Exception {
+        final RestClientOptions clientOptions = new RestClientOptions();
+        clientOptions.setDefaultHost("thisIsAnUnknownHost");
+        createAndSetClient(clientOptions);
+
+        final Async async = testContext.async(3);
+
+        final Func0<Observable<UserResponse>> request = () -> rxRestClient.get(
+                "/api/v1/users/e5297618-c299-4157-a85c-4957c8204819",
+                UserResponse.class,
+                restClientRequest -> restClientRequest.setRequestCache(new RequestCacheOptions().withExpiresAfterWriteMillis(10000)).end()
+        ).map(RestClientResponse::getBody);
+
+        Observable.concatEager(
+                Observable.defer(request).map(userResponse -> new Throwable("not expected"))
+                        .onErrorResumeNext(Observable::just),
+                Observable.defer(request).map(userResponse -> new Throwable("not expected"))
+                        .onErrorResumeNext(Observable::just),
+                Observable.defer(request).map(userResponse -> new Throwable("not expected"))
+                        .onErrorResumeNext(Observable::just)
+        ).subscribe(
+                throwable -> {
+                    if (throwable instanceof UnknownHostException) {
+                        async.countDown();
+                    } else {
+                        testContext.fail("Received unexpected exception");
+                    }
+                },
+                testContext::fail
+        );
+    }
+
+    @Test
     public void testRequestWithoutCache(TestContext testContext) throws Exception {
         testRequestCacheOk(testContext, null, 3);
     }
@@ -349,18 +387,20 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
                 .map(userResponseRestClientResponse -> userResponseRestClientResponse.getBody());
 
-        Observable.concatEager(Observable.defer(request), Observable.defer(request), Observable.defer(request))
-                .onErrorResumeNext(throwable -> Observable.just(null))
-                .subscribe(
-                        aVoid -> {
-                            // Do nothing
-                        },
-                        testContext::fail,
-                        () -> {
-                            assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
-                            async.complete();
-                        }
-                );
+        Observable.concatEager(
+                Observable.defer(request).onErrorResumeNext(throwable -> Observable.just(null)),
+                Observable.defer(request).onErrorResumeNext(throwable -> Observable.just(null)),
+                Observable.defer(request).onErrorResumeNext(throwable -> Observable.just(null))
+        ).subscribe(
+                aVoid -> {
+                    // Do nothing
+                },
+                testContext::fail,
+                () -> {
+                    assertThat(testContext, Arrays.asList(getMockServerClient().retrieveRecordedRequests(httpRequest)), hasSize(timesCalled));
+                    async.complete();
+                }
+        );
     }
 
 }
