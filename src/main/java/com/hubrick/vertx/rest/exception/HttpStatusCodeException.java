@@ -16,6 +16,7 @@
 package com.hubrick.vertx.rest.exception;
 
 import com.hubrick.vertx.rest.HttpInputMessage;
+import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.impl.DefaultRestClientResponse;
@@ -93,12 +94,21 @@ public abstract class HttpStatusCodeException extends RestClientException {
     }
 
     /**
-     * Return the response body as a byte array.
+     * Return the response body converted to the given class
      *
      * @since 3.0.5
      */
-    public <T> RestClientResponse<T> getResponseBody(Class<T> clazz) {
-        return new DefaultRestClientResponse<>(httpMessageConverters, clazz, httpInputMessage, streamBase, null);
+    public <T> T getResponseBody(Class<T> clazz) {
+        final ByteBuf byteBuf = httpInputMessage.getBody();
+        if(byteBuf.readableBytes() == 0 || Void.class.isAssignableFrom(clazz)) return null;
+
+        final MediaType mediaType = MediaType.parseMediaType(httpInputMessage.getHeaders().get(HttpHeaders.CONTENT_TYPE));
+        for (HttpMessageConverter httpMessageConverter : httpMessageConverters) {
+            if (httpMessageConverter.canRead(clazz, mediaType)) {
+                return (T) httpMessageConverter.read(clazz, httpInputMessage);
+            }
+        }
+        return null;
     }
 
     /**

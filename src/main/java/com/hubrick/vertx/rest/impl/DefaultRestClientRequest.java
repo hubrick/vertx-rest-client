@@ -88,18 +88,18 @@ public class DefaultRestClientRequest<T> implements RestClientRequest<T> {
     private boolean globalHeadersPopulated = false;
     private MultiKey cacheKey;
 
-    public DefaultRestClientRequest(Vertx vertx,
-                                    DefaultRestClient restClient,
-                                    HttpClient httpClient,
-                                    List<HttpMessageConverter> httpMessageConverters,
-                                    HttpMethod method,
-                                    String uri,
-                                    Class<T> responseClass,
-                                    Handler<RestClientResponse<T>> responseHandler,
-                                    Long timeoutInMillis,
-                                    RequestCacheOptions requestCacheOptions,
-                                    MultiMap globalHeaders,
-                                    @Nullable Handler<Throwable> exceptionHandler) {
+    DefaultRestClientRequest(Vertx vertx,
+                             DefaultRestClient restClient,
+                             HttpClient httpClient,
+                             List<HttpMessageConverter> httpMessageConverters,
+                             HttpMethod method,
+                             String uri,
+                             Class<T> responseClass,
+                             Handler<RestClientResponse<T>> responseHandler,
+                             Long timeoutInMillis,
+                             RequestCacheOptions requestCacheOptions,
+                             MultiMap globalHeaders,
+                             @Nullable Handler<Throwable> exceptionHandler) {
         checkNotNull(vertx, "vertx must not be null");
         checkNotNull(restClient, "restClient must not be null");
         checkNotNull(httpClient, "httpClient must not be null");
