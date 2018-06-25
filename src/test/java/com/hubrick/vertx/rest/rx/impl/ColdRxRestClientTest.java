@@ -25,7 +25,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import rx.Observable;
+import rx.Single;
 import rx.functions.Action1;
 
 import static org.junit.Assert.fail;
@@ -79,7 +79,7 @@ public class ColdRxRestClientTest {
         Action1<RestClientRequest<Void>> handler = createSpyableAction();
 
         //when
-        Observable<RestClientResponse<Void>> result = rxRestClient.get("any", handler);
+        Single<RestClientResponse<Void>> result = rxRestClient.get("any", handler);
         result.subscribe();
         result.subscribe();
 
@@ -94,7 +94,7 @@ public class ColdRxRestClientTest {
         Action1<RestClientRequest<Void>> handler = createSpyableAction();
 
         //when
-        rxRestClient.get("any", handler).publish().connect();
+        rxRestClient.get("any", handler).toObservable().publish().connect();
 
         //then
         Mockito.verify(handler).call(any());

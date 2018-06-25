@@ -20,8 +20,7 @@ import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.rx.RxRestClient;
 import io.vertx.core.http.HttpMethod;
-import rx.Emitter;
-import rx.Observable;
+import rx.Single;
 import rx.functions.Action1;
 
 /**
@@ -37,75 +36,71 @@ public class ColdRxRestClient implements RxRestClient {
     }
 
     @Override
-    public Observable<RestClientResponse<Void>> get(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
+    public Single<RestClientResponse<Void>> get(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
         return request(HttpMethod.GET, uri, Void.class, requestBuilder);
     }
 
     @Override
-    public <T> Observable<RestClientResponse<T>> get(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
+    public <T> Single<RestClientResponse<T>> get(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
         return request(HttpMethod.GET, uri, responseClass, requestBuilder);
     }
 
     @Override
-    public Observable<RestClientResponse<Void>> post(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
+    public Single<RestClientResponse<Void>> post(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
         return request(HttpMethod.POST, uri, Void.class, requestBuilder);
     }
 
     @Override
-    public <T> Observable<RestClientResponse<T>> post(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
+    public <T> Single<RestClientResponse<T>> post(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
         return request(HttpMethod.POST, uri, responseClass, requestBuilder);
     }
 
     @Override
-    public Observable<RestClientResponse<Void>> put(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
+    public Single<RestClientResponse<Void>> put(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
         return request(HttpMethod.PUT, uri, Void.class, requestBuilder);
     }
 
     @Override
-    public <T> Observable<RestClientResponse<T>> put(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
+    public <T> Single<RestClientResponse<T>> put(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
         return request(HttpMethod.PUT, uri, responseClass, requestBuilder);
     }
 
     @Override
-    public Observable<RestClientResponse<Void>> delete(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
+    public Single<RestClientResponse<Void>> delete(String uri, Action1<RestClientRequest<Void>> requestBuilder) {
         return request(HttpMethod.DELETE, uri, Void.class, requestBuilder);
     }
 
     @Override
-    public <T> Observable<RestClientResponse<T>> delete(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
+    public <T> Single<RestClientResponse<T>> delete(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
         return request(HttpMethod.DELETE, uri, responseClass, requestBuilder);
     }
 
     @Override
-    public Observable<RestClientResponse<Void>> request(HttpMethod method, String uri, Action1<RestClientRequest<Void>> requestBuilder) {
+    public Single<RestClientResponse<Void>> request(HttpMethod method, String uri, Action1<RestClientRequest<Void>> requestBuilder) {
         return request(method, uri, Void.class, requestBuilder);
     }
 
     /**
-     * Creates observable based on emitter object. Emitter activated on subscribe() call and then configured to:
+     * Creates Single based on emitter object. Emitter activated on subscribe() call and then configured to:
      * - produce event+complete on successful execution of REST call
      * - produce error if something goes wrong during construction OR call execution
      *
      * Also RestClientRequest is wrapped in custom class that denies override of exception handler
      * to make sure error is handled in rx way
      *
-     * @return "cold" observable that emits rest call result
+     * @return "cold" Single that emits rest call result
      */
     @Override
-    public <T> Observable<RestClientResponse<T>> request(HttpMethod method, String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
-        return Observable.create(emitter -> {
-
-            RestClientRequest<T> callbackRequest = restClient.request(method, uri, responseClass, resp -> {
-                emitter.onNext(resp);
-                emitter.onCompleted();
-            }).exceptionHandler(emitter::onError);
-
+    public <T> Single<RestClientResponse<T>> request(HttpMethod method, String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
+        return Single.fromEmitter(emitter -> {
+            RestClientRequest<T> callbackRequest = restClient.request(method, uri, responseClass, emitter::onSuccess)
+                    .exceptionHandler(emitter::onError);
             try {
                 DefaultRxRestClientRequest<T> rxDecoratedRequest = new DefaultRxRestClientRequest<>(callbackRequest);
                 requestBuilder.call(rxDecoratedRequest);
             } catch (Exception e) {
                 emitter.onError(e);
             }
-        }, Emitter.BackpressureMode.NONE);
+        });
     }
 }
