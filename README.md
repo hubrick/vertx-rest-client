@@ -4,7 +4,8 @@ A fully functional Vert.x REST client with RxJava support and request caching.
 
 The design is inspired by Spring's RestTemplate. 
 The handling of MimeTypes and HttpMessageConverters is taken directly from Spring.
-Observables creates by Rx REST client are "hot" observables, so make sure you considering this in your design.
+
+Observables created by Rx REST client are "cold" observables, so make sure you considering this in your design.
 
 ## Compatibility
 - Java 8+
