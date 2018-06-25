@@ -24,6 +24,7 @@ import com.hubrick.vertx.rest.AbstractFunctionalTest;
 import com.hubrick.vertx.rest.MediaType;
 import com.hubrick.vertx.rest.RequestCacheOptions;
 import com.hubrick.vertx.rest.RestClientOptions;
+import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.FormHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.JacksonJsonHttpMessageConverter;
@@ -40,6 +41,7 @@ import org.junit.Test;
 import org.mockserver.model.Header;
 import org.mockserver.model.HttpRequest;
 import rx.Observable;
+import rx.Single;
 import rx.functions.Func0;
 
 import java.io.ByteArrayInputStream;
@@ -72,7 +74,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
     private RxRestClient rxRestClient;
 
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         final RestClientOptions clientOptions = new RestClientOptions();
         clientOptions.setDefaultHost("localhost");
         clientOptions.setDefaultPort(MOCKSERVER_PORT);
@@ -172,10 +174,9 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                     } catch (Exception e) {
                         testContext.fail(e);
                     }
-
+                    async.complete();
                 },
-                testContext::fail,
-                () -> async.complete()
+                testContext::fail
         );
     }
 
@@ -230,12 +231,12 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         );
 
         final Async async = testContext.async();
-        rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, restClientRequest -> restClientRequest.end())
-                .flatMap(userSearchResponseRestClientResponse -> {
+        rxRestClient.get("/api/v1/users/search", UserSearchResponse[].class, RestClientRequest::end)
+                .flatMapObservable(userSearchResponseRestClientResponse -> {
                     final List<Observable<RestClientResponse<UserResponse>>> responses = new LinkedList<>();
                     for (UserSearchResponse userSearchResponse : userSearchResponseRestClientResponse.getBody()) {
-                        final Observable<RestClientResponse<UserResponse>> userResponse = rxRestClient.get("/api/v1/users/" + userSearchResponse.getId(), UserResponse.class, restClientRequest -> restClientRequest.end());
-                        responses.add(userResponse);
+                        final Single<RestClientResponse<UserResponse>> userResponse = rxRestClient.get("/api/v1/users/" + userSearchResponse.getId(), UserResponse.class, RestClientRequest::end);
+                        responses.add(userResponse.toObservable());
                     }
 
                     return Observable.merge(responses);
@@ -246,7 +247,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                     assertThat(testContext, id, isIn(ids));
                 },
                 testContext::fail,
-                () -> async.complete()
+                async::complete
         );
     }
 
@@ -256,31 +257,31 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
     }
 
     @Test
-    public void testRequestWithCache_NotFoundHttpResponse(TestContext testContext) throws Exception {
+    public void testRequestWithCache_NotFoundHttpResponse(TestContext testContext) {
         testRequestCacheNotFound(testContext, new RequestCacheOptions().withExpiresAfterWriteMillis(10000), 1);
     }
 
     @Test
-    public void testRequestWithCache_UnknownHostError(TestContext testContext) throws Exception {
+    public void testRequestWithCache_UnknownHostError(TestContext testContext) {
         final RestClientOptions clientOptions = new RestClientOptions();
         clientOptions.setDefaultHost("thisIsAnUnknownHost");
         createAndSetClient(clientOptions);
 
         final Async async = testContext.async(3);
 
-        final Func0<Observable<UserResponse>> request = () -> rxRestClient.get(
+        final Func0<Single<UserResponse>> request = () -> rxRestClient.get(
                 "/api/v1/users/e5297618-c299-4157-a85c-4957c8204819",
                 UserResponse.class,
                 restClientRequest -> restClientRequest.setRequestCache(new RequestCacheOptions().withExpiresAfterWriteMillis(10000)).end()
         ).map(RestClientResponse::getBody);
 
         Observable.concatEager(
-                Observable.defer(request).map(userResponse -> new Throwable("not expected"))
-                        .onErrorResumeNext(Observable::just),
-                Observable.defer(request).map(userResponse -> new Throwable("not expected"))
-                        .onErrorResumeNext(Observable::just),
-                Observable.defer(request).map(userResponse -> new Throwable("not expected"))
-                        .onErrorResumeNext(Observable::just)
+                Single.defer(request).map(userResponse -> new Throwable("not expected"))
+                        .onErrorResumeNext(Single::just).toObservable(),
+                Single.defer(request).map(userResponse -> new Throwable("not expected"))
+                        .onErrorResumeNext(Single::just).toObservable(),
+                Single.defer(request).map(userResponse -> new Throwable("not expected"))
+                        .onErrorResumeNext(Single::just).toObservable()
         ).subscribe(
                 throwable -> {
                     if (throwable instanceof UnknownHostException) {
@@ -359,7 +360,8 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
         final Async async = testContext.async();
         final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
-                .map(userResponseRestClientResponse -> userResponseRestClientResponse.getBody());
+                .map(RestClientResponse::getBody)
+                .toObservable();
 
         Observable.concatEager(Observable.defer(request), Observable.defer(request), Observable.defer(request))
                 .subscribe(
@@ -374,7 +376,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                 );
     }
 
-    private void testRequestCacheNotFound(TestContext testContext, RequestCacheOptions requestCacheOptions, int timesCalled) throws Exception {
+    private void testRequestCacheNotFound(TestContext testContext, RequestCacheOptions requestCacheOptions, int timesCalled) {
 
         final HttpRequest httpRequest = request().withMethod("GET").withPath("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819");
         getMockServerClient().when(
@@ -385,7 +387,8 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
         final Async async = testContext.async();
         final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
-                .map(userResponseRestClientResponse -> userResponseRestClientResponse.getBody());
+                .map(RestClientResponse::getBody)
+                .toObservable();
 
         Observable.concatEager(
                 Observable.defer(request).onErrorResumeNext(throwable -> Observable.just(null)),

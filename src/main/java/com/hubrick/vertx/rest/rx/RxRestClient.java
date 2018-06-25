@@ -23,7 +23,7 @@ import com.hubrick.vertx.rest.converter.HttpMessageConverter;
 import com.hubrick.vertx.rest.rx.impl.ColdRxRestClient;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
-import rx.Observable;
+import rx.Single;
 import rx.functions.Action1;
 
 import java.util.List;
@@ -66,7 +66,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    Observable<RestClientResponse<Void>> get(String uri, Action1<RestClientRequest<Void>> requestBuilder);
+    Single<RestClientResponse<Void>> get(String uri, Action1<RestClientRequest<Void>> requestBuilder);
 
     /**
      * Makes a GET call with a expected response value.
@@ -76,7 +76,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    <T> Observable<RestClientResponse<T>> get(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
+    <T> Single<RestClientResponse<T>> get(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
 
     /**
      * Makes a POST call with no response value.
@@ -85,7 +85,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    Observable<RestClientResponse<Void>> post(String uri, Action1<RestClientRequest<Void>> requestBuilder);
+    Single<RestClientResponse<Void>> post(String uri, Action1<RestClientRequest<Void>> requestBuilder);
 
     /**
      * Makes a POST call with a expected response value.
@@ -95,7 +95,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    <T> Observable<RestClientResponse<T>> post(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
+    <T> Single<RestClientResponse<T>> post(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
 
     /**
      * Makes a PUT call with no response value.
@@ -104,7 +104,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    Observable<RestClientResponse<Void>> put(String uri, Action1<RestClientRequest<Void>> requestBuilder);
+    Single<RestClientResponse<Void>> put(String uri, Action1<RestClientRequest<Void>> requestBuilder);
 
     /**
      * Makes a PUT call with a expected response value.
@@ -114,7 +114,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    <T> Observable<RestClientResponse<T>> put(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
+    <T> Single<RestClientResponse<T>> put(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
 
     /**
      * Makes a DELETE call with no response value.
@@ -123,7 +123,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    Observable<RestClientResponse<Void>> delete(String uri, Action1<RestClientRequest<Void>> requestBuilder);
+    Single<RestClientResponse<Void>> delete(String uri, Action1<RestClientRequest<Void>> requestBuilder);
 
     /**
      * Makes a DELETE call with a expected response value.
@@ -133,7 +133,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    <T> Observable<RestClientResponse<T>> delete(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
+    <T> Single<RestClientResponse<T>> delete(String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
 
     /**
      * Makes a GET, POST, PUT or DELETE call with no response value. It's a generic method for REST calls.
@@ -143,7 +143,7 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    Observable<RestClientResponse<Void>> request(HttpMethod method, String uri, Action1<RestClientRequest<Void>> requestBuilder);
+    Single<RestClientResponse<Void>> request(HttpMethod method, String uri, Action1<RestClientRequest<Void>> requestBuilder);
 
     /**
      * Makes a GET, POST, PUT or DELETE call with a expected response value. It's a generic method for REST calls.
@@ -154,5 +154,5 @@ public interface RxRestClient {
      * @param requestBuilder The handler to build the request
      * @return A reference to the {@link RestClientRequest}
      */
-    <T> Observable<RestClientResponse<T>> request(HttpMethod method, String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
+    <T> Single<RestClientResponse<T>> request(HttpMethod method, String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder);
 }
