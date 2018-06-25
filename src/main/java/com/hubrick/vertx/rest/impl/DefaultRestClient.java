@@ -138,7 +138,7 @@ public class DefaultRestClient implements RestClient {
     }
 
     private <T> DefaultRestClientRequest<T> handleRequest(HttpMethod method, String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler) {
-        return new DefaultRestClientRequest(
+        return new DefaultRestClientRequest<>(
                 vertx,
                 this,
                 httpClient,

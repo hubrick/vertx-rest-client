@@ -84,7 +84,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    RestClientRequest get(String uri, Handler<RestClientResponse<Void>> responseHandler);
+    RestClientRequest<Void> get(String uri, Handler<RestClientResponse<Void>> responseHandler);
 
     /**
      * Makes a GET call with a expected response value.
@@ -94,7 +94,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    <T> RestClientRequest get(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
+    <T> RestClientRequest<T> get(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
 
     /**
      * Makes a POST call with no response value.
@@ -103,7 +103,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    RestClientRequest post(String uri, Handler<RestClientResponse<Void>> responseHandler);
+    RestClientRequest<Void> post(String uri, Handler<RestClientResponse<Void>> responseHandler);
 
     /**
      * Makes a POST call with a expected response value.
@@ -113,7 +113,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    <T> RestClientRequest post(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
+    <T> RestClientRequest<T> post(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
 
     /**
      * Makes a PUT call with no response value.
@@ -122,7 +122,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    RestClientRequest put(String uri, Handler<RestClientResponse<Void>> responseHandler);
+    RestClientRequest<Void> put(String uri, Handler<RestClientResponse<Void>> responseHandler);
 
     /**
      * Makes a PUT call with a expected response value.
@@ -132,7 +132,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    <T> RestClientRequest put(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
+    <T> RestClientRequest<T> put(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
 
     /**
      * Makes a DELETE call with no response value.
@@ -141,7 +141,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    RestClientRequest delete(String uri, Handler<RestClientResponse<Void>> responseHandler);
+    RestClientRequest<Void> delete(String uri, Handler<RestClientResponse<Void>> responseHandler);
 
     /**
      * Makes a DELETE call with a expected response value.
@@ -151,7 +151,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    <T> RestClientRequest delete(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
+    <T> RestClientRequest<T> delete(String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
 
     /**
      * Makes a GET, POST, PUT or DELETE call with no response value. It's a generic method for REST calls.
@@ -161,7 +161,7 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    RestClientRequest request(HttpMethod method, String uri, Handler<RestClientResponse<Void>> responseHandler);
+    RestClientRequest<Void> request(HttpMethod method, String uri, Handler<RestClientResponse<Void>> responseHandler);
 
     /**
      * Makes a GET, POST, PUT or DELETE call with a expected response value. It's a generic method for REST calls.
@@ -172,5 +172,5 @@ public interface RestClient {
      * @param responseHandler The handler for the response callback
      * @return A reference to the {@link com.hubrick.vertx.rest.RestClientRequest}
      */
-    <T> RestClientRequest request(HttpMethod method, String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
+    <T> RestClientRequest<T> request(HttpMethod method, String uri, Class<T> responseClass, Handler<RestClientResponse<T>> responseHandler);
 }
