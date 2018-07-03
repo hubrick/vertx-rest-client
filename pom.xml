@@ -9,7 +9,7 @@
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
     <packaging>jar</packaging>
-    <version>2.3.3-SNAPSHOT</version>
+    <version>3.0.1-SNAPSHOT</version>
     <inceptionYear>2015</inceptionYear>
 
     <name>Vert.x REST client</name>
