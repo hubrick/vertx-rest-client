@@ -46,11 +46,11 @@ public class DefaultRestClientResponse<T> implements RestClientResponse<T> {
     private final StreamBase streamBase;
     private Handler<Throwable> exceptionHandler;
 
-    public DefaultRestClientResponse(List<HttpMessageConverter> httpMessageConverters,
-                                     Class<T> clazz,
-                                     HttpInputMessage httpInputMessage,
-                                     StreamBase streamBase,
-                                     @Nullable Handler<Throwable> exceptionHandler) {
+    DefaultRestClientResponse(List<HttpMessageConverter> httpMessageConverters,
+                              Class<T> clazz,
+                              HttpInputMessage httpInputMessage,
+                              StreamBase streamBase,
+                              @Nullable Handler<Throwable> exceptionHandler) {
         checkNotNull(httpMessageConverters, "dataMappers must not be null");
         checkArgument(!httpMessageConverters.isEmpty(), "dataMappers must not be empty");
         checkNotNull(clazz, "clazz must not be null");
