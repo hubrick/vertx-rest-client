@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hubrick.vertx.rest.rx.impl;
+package com.hubrick.vertx.rest.common;
 
 import com.hubrick.vertx.rest.RestClientResponse;
 import io.vertx.core.Handler;
