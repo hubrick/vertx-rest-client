@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hubrick.vertx.rest.rx;
+package com.hubrick.vertx.rest.rx2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Charsets;
@@ -35,6 +35,10 @@ import com.hubrick.vertx.rest.converter.MultipartHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.StringHttpMessageConverter;
 import com.hubrick.vertx.rest.converter.model.Part;
 import io.netty.buffer.Unpooled;
+import io.reactivex.Observable;
+import io.reactivex.ObservableSource;
+import io.reactivex.Single;
+import io.reactivex.functions.Function;
 import io.vertx.core.MultiMap;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -43,8 +47,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockserver.model.Header;
 import org.mockserver.model.HttpRequest;
-import rx.Observable;
-import rx.Single;
 import rx.functions.Func0;
 
 import java.io.ByteArrayInputStream;
@@ -54,8 +56,10 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 
 import static com.google.common.io.Resources.getResource;
 import static com.google.common.io.Resources.toByteArray;
@@ -272,19 +276,21 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
 
         final Async async = testContext.async(3);
 
-        final Func0<Single<UserResponse>> request = () -> rxRestClient.get(
+        final Callable<Single<UserResponse>> request = () -> rxRestClient.get(
                 "/api/v1/users/e5297618-c299-4157-a85c-4957c8204819",
                 UserResponse.class,
                 restClientRequest -> restClientRequest.setRequestCache(new RequestCacheOptions().withExpiresAfterWriteMillis(10000)).end()
         ).map(RestClientResponse::getBody);
 
         Observable.concatEager(
-                Single.defer(request).map(userResponse -> new Throwable("not expected"))
-                        .onErrorResumeNext(Single::just).toObservable(),
-                Single.defer(request).map(userResponse -> new Throwable("not expected"))
-                        .onErrorResumeNext(Single::just).toObservable(),
-                Single.defer(request).map(userResponse -> new Throwable("not expected"))
-                        .onErrorResumeNext(Single::just).toObservable()
+                ImmutableList.of(
+                        Single.defer(request).map(userResponse -> new Throwable("not expected"))
+                                .onErrorResumeNext(Single::just).toObservable(),
+                        Single.defer(request).map(userResponse -> new Throwable("not expected"))
+                                .onErrorResumeNext(Single::just).toObservable(),
+                        Single.defer(request).map(userResponse -> new Throwable("not expected"))
+                                .onErrorResumeNext(Single::just).toObservable()
+                )
         ).subscribe(
                 throwable -> {
                     if (throwable instanceof UnknownHostException) {
@@ -366,7 +372,7 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
                 .map(RestClientResponse::getBody)
                 .toObservable();
 
-        Observable.concatEager(Observable.defer(request), Observable.defer(request), Observable.defer(request))
+        Observable.concatEager(ImmutableList.of(Observable.defer(request), Observable.defer(request), Observable.defer(request)))
                 .subscribe(
                         aVoid -> {
                             // Do nothing
@@ -389,14 +395,17 @@ public class RxRestClientIntegrationTest extends AbstractFunctionalTest {
         );
 
         final Async async = testContext.async();
-        final Func0<Observable<UserResponse>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
+        final Callable<Observable<Optional<UserResponse>>> request = () -> rxRestClient.get("/api/v1/users/e5297618-c299-4157-a85c-4957c8204819", UserResponse.class, restClientRequest -> restClientRequest.setRequestCache(requestCacheOptions).end())
                 .map(RestClientResponse::getBody)
+                .map(Optional::of)
                 .toObservable();
 
         Observable.concatEager(
-                Observable.defer(request).onErrorResumeNext(throwable -> Observable.just(null)),
-                Observable.defer(request).onErrorResumeNext(throwable -> Observable.just(null)),
-                Observable.defer(request).onErrorResumeNext(throwable -> Observable.just(null))
+                ImmutableList.of(
+                        Observable.defer(request).onErrorResumeNext((Function<? super Throwable, ? extends ObservableSource<Optional<UserResponse>>>) throwable -> Observable.just(Optional.empty())),
+                        Observable.defer(request).onErrorResumeNext((Function<? super Throwable, ? extends ObservableSource<Optional<UserResponse>>>) throwable -> Observable.just(Optional.empty())),
+                        Observable.defer(request).onErrorResumeNext((Function<? super Throwable, ? extends ObservableSource<Optional<UserResponse>>>) throwable -> Observable.just(Optional.empty()))
+                )
         ).subscribe(
                 aVoid -> {
                     // Do nothing

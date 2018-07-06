@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hubrick.vertx.rest.rx.impl;
+package com.hubrick.vertx.rest.rx2.impl;
 
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
-import com.hubrick.vertx.rest.common.DefaultRxRestClientResponse;
-import com.hubrick.vertx.rest.rx.RxRestClient;
 import com.hubrick.vertx.rest.common.DefaultRxRestClientRequest;
+import com.hubrick.vertx.rest.common.DefaultRxRestClientResponse;
+import com.hubrick.vertx.rest.rx2.RxRestClient;
+import io.reactivex.Single;
 import io.vertx.core.http.HttpMethod;
-import rx.Single;
 import rx.functions.Action1;
 
 /**
@@ -94,14 +94,14 @@ public class ColdRxRestClient implements RxRestClient {
      */
     @Override
     public <T> Single<RestClientResponse<T>> request(HttpMethod method, String uri, Class<T> responseClass, Action1<RestClientRequest<T>> requestBuilder) {
-        return Single.fromEmitter(emitter -> {
-            final RestClientRequest<T> callbackRequest = restClient.request(method, uri, responseClass, restClientResponse -> emitter.onSuccess(new DefaultRxRestClientResponse<>(restClientResponse)))
-                    .exceptionHandler(emitter::onError);
+        return Single.create(source -> {
+            final RestClientRequest<T> callbackRequest = restClient.request(method, uri, responseClass, restClientResponse -> source.onSuccess(new DefaultRxRestClientResponse<>(restClientResponse)))
+                    .exceptionHandler(source::onError);
             try {
                 final DefaultRxRestClientRequest<T> rxDecoratedRequest = new DefaultRxRestClientRequest<>(callbackRequest);
                 requestBuilder.call(rxDecoratedRequest);
             } catch (Exception e) {
-                emitter.onError(e);
+                source.onError(e);
             }
         });
     }

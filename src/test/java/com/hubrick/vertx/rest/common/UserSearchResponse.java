@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hubrick.vertx.rest.rx;
+package com.hubrick.vertx.rest.common;
 
 import java.util.UUID;
 
@@ -21,11 +21,9 @@ import java.util.UUID;
  * @author Emir Dizdarevic
  * @since 1.1.0
  */
-public class UserResponse {
+public class UserSearchResponse {
 
     private UUID id;
-    private String firstName;
-    private String lastName;
 
     public UUID getId() {
         return id;
@@ -33,21 +31,5 @@ public class UserResponse {
 
     public void setId(UUID id) {
         this.id = id;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
     }
 }
