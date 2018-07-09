@@ -24,7 +24,6 @@ import com.hubrick.vertx.rest.rx2.impl.ColdRxRestClient;
 import io.reactivex.Single;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
-import rx.functions.Action1;
 
 import java.util.List;
 
@@ -32,7 +31,7 @@ import java.util.List;
  * An RX wrapper around {@link RestClient}
  *
  * @author Emir Dizdarevic
- * @since 1.1.0
+ * @since 3.0.0
  */
 public interface RxRestClient {
 

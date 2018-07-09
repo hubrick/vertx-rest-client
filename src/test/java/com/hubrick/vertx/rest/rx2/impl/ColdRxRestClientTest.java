@@ -18,6 +18,7 @@ package com.hubrick.vertx.rest.rx2.impl;
 import com.hubrick.vertx.rest.RestClient;
 import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
+import com.hubrick.vertx.rest.rx2.Action1;
 import com.hubrick.vertx.rest.rx2.RxRestClient;
 import io.reactivex.Single;
 import org.junit.Before;
@@ -26,7 +27,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import rx.functions.Action1;
 
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;

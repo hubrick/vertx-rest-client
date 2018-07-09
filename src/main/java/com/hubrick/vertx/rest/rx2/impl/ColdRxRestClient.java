@@ -20,14 +20,14 @@ import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.common.DefaultRxRestClientRequest;
 import com.hubrick.vertx.rest.common.DefaultRxRestClientResponse;
+import com.hubrick.vertx.rest.rx2.Action1;
 import com.hubrick.vertx.rest.rx2.RxRestClient;
 import io.reactivex.Single;
 import io.vertx.core.http.HttpMethod;
-import rx.functions.Action1;
 
 /**
  * @author Emir Dizdarevic
- * @since 1.1.0
+ * @since 3.0.0
  */
 public class ColdRxRestClient implements RxRestClient {
 
