@@ -29,11 +29,11 @@ import rx.functions.Action1;
  * @author Emir Dizdarevic
  * @since 1.1.0
  */
-public class ColdRxRestClient implements RxRestClient {
+public class DefaultRxRestClient implements RxRestClient {
 
     private final RestClient restClient;
 
-    public ColdRxRestClient(RestClient restClient) {
+    public DefaultRxRestClient(RestClient restClient) {
         this.restClient = restClient;
     }
 

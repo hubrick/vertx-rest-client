@@ -20,7 +20,7 @@ import com.hubrick.vertx.rest.RestClientOptions;
 import com.hubrick.vertx.rest.RestClientRequest;
 import com.hubrick.vertx.rest.RestClientResponse;
 import com.hubrick.vertx.rest.converter.HttpMessageConverter;
-import com.hubrick.vertx.rest.rx.impl.ColdRxRestClient;
+import com.hubrick.vertx.rest.rx.impl.DefaultRxRestClient;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import rx.Single;
@@ -37,7 +37,7 @@ import java.util.List;
 public interface RxRestClient {
 
     /**
-     *  Creates an instance of {@link ColdRxRestClient}
+     *  Creates an instance of {@link DefaultRxRestClient}
      *
      * @param vertx The vertx instance
      * @param clientOptions Rest client options
@@ -45,18 +45,18 @@ public interface RxRestClient {
      * @return A instance of RxRestClient
      */
     static RxRestClient create(Vertx vertx, RestClientOptions clientOptions, List<HttpMessageConverter> httpMessageConverters) {
-        return new ColdRxRestClient(RestClient.create(vertx, clientOptions, httpMessageConverters));
+        return new DefaultRxRestClient(RestClient.create(vertx, clientOptions, httpMessageConverters));
     }
 
     /**
-     *  Creates an instance of {@link ColdRxRestClient} with default RestClientOptions
+     *  Creates an instance of {@link DefaultRxRestClient} with default RestClientOptions
      *
      * @param vertx The vertx instance
      * @param httpMessageConverters defined http message converters
      * @return A instance of RxRestClient
      */
     static RxRestClient create(Vertx vertx, List<HttpMessageConverter> httpMessageConverters) {
-        return new ColdRxRestClient(RestClient.create(vertx, new RestClientOptions(), httpMessageConverters));
+        return new DefaultRxRestClient(RestClient.create(vertx, new RestClientOptions(), httpMessageConverters));
     }
 
     /**

@@ -50,7 +50,7 @@ public class ColdRxRestClientTest {
     @Test
     public void shouldNotExecuteHandlerWithoutSubscription() {
         //given
-        RxRestClient rxRestClient = new ColdRxRestClient(client);
+        RxRestClient rxRestClient = new DefaultRxRestClient(client);
 
         //when
         rxRestClient.get("any", request -> fail("Shouldn't be called"));
@@ -62,7 +62,7 @@ public class ColdRxRestClientTest {
     @Test
     public void shouldExecuteHandlerOnSubscription() {
         //given
-        RxRestClient rxRestClient = new ColdRxRestClient(client);
+        RxRestClient rxRestClient = new DefaultRxRestClient(client);
         Action1<RestClientRequest<Void>> handler = createSpyableAction();
 
         //when
@@ -75,7 +75,7 @@ public class ColdRxRestClientTest {
     @Test
     public void shouldExecuteHandlerOnEachSubscription() {
         //given
-        RxRestClient rxRestClient = new ColdRxRestClient(client);
+        RxRestClient rxRestClient = new DefaultRxRestClient(client);
         Action1<RestClientRequest<Void>> handler = createSpyableAction();
 
         //when
@@ -90,7 +90,7 @@ public class ColdRxRestClientTest {
     @Test
     public void shouldExecuteHandlerImmediatelyWhenHot() {
         //given
-        RxRestClient rxRestClient = new ColdRxRestClient(client);
+        RxRestClient rxRestClient = new DefaultRxRestClient(client);
         Action1<RestClientRequest<Void>> handler = createSpyableAction();
 
         //when
