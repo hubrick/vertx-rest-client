@@ -11,12 +11,13 @@ Observables created by Rx REST client are "cold" observables, so make sure you c
 - Java 8+
 - Vert.x 3.x.x
 
- Vert.x version     | Library version
- ------------------ | ----------------
- 3.0.0 - 3.3.3      | 2.0.x
- 3.0.0 - 3.3.3      | 2.1.0
- 3.0.0 - 3.3.3      | 2.2.1
- 3.4.x              | 2.3.1
+ Vert.x version     | Library version | Rx version 
+ ------------------ | ----------------|--------------
+ 3.0.0 - 3.3.3      | 2.0.x           | 1.x
+ 3.0.0 - 3.3.3      | 2.1.0           | 1.x
+ 3.0.0 - 3.3.3      | 2.2.1           | 1.x
+ 3.4.x              | 2.3.1           | 1.x
+ 3.5.x              | 3.0.0           | 1.x, 2.x
  
 ## Dependencies
 
@@ -26,7 +27,7 @@ Observables created by Rx REST client are "cold" observables, so make sure you c
 <dependency>
     <groupId>com.hubrick.vertx</groupId>
     <artifactId>vertx-rest-client</artifactId>
-    <version>2.3.1</version>
+    <version>3.0.0</version>
 </dependency>
 ```
 
